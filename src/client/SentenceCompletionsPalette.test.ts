@@ -53,7 +53,7 @@ describe("SentenceCompletionsPalette render tests", (): void => {
     expect(document.querySelector(`[data-palettename="${SENTENCE_COMPLETIONS_NAME}"]`)).toBeNull();
   });
 
-  test("Signal value is a set of completions", async (): Promise<void> => {
+  test("Signal value is a set of completions", (): void => {
     sentenceCompletionsSignal.value = SUGGESTED_COMPLETIONS;
     render(html`<${SentenceCompletionsPalette} />`);
 

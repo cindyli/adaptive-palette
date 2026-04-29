@@ -40,9 +40,11 @@ function initCellTypesSelect () {
       cellTypesSelect.add(new Option(cellType));
     }
   });
-  cellTypesSelect.addEventListener("change", async () => {
-    const palette = await adaptivePaletteGlobals.paletteStore.getNamedPalette(currentPaletteName);
-    updatePaletteCells(palette, cellTypesSelect.selectedOptions[0].value);
+  cellTypesSelect.addEventListener("change", () => {
+    void (async () => {
+      const palette = await adaptivePaletteGlobals.paletteStore.getNamedPalette(currentPaletteName);
+      updatePaletteCells(palette, cellTypesSelect.selectedOptions[0].value);
+    })();
   });
 }
 
@@ -307,9 +309,9 @@ const paletteDisplay = document.getElementById("paletteDisplay");
 
 // Listeners
 generatePalette.addEventListener("click", handleGenerateDisplayButton);
-paletteName.addEventListener("change", handleNameChange);
+paletteName.addEventListener("change", () => { void handleNameChange(); });
 document.getElementById("clearPaletteDisplay").addEventListener("click", clearPaletteDisplay);
-document.getElementById("savePalette").addEventListener("click", savePalette);
+document.getElementById("savePalette").addEventListener("click", () => { void savePalette(); });
 
 initCellTypesSelect();
 renderExamples();

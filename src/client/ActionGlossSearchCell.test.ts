@@ -79,7 +79,7 @@ describe("ActionGlossSearchCell render tests", (): void => {
     const divCell = button.parentElement as HTMLElement;
     expect(divCell).toHaveClass("actionGlossSearchCell");
 
-    const inputElement = screen.getByLabelText(/Label:/i) as HTMLInputElement;
+    const inputElement = screen.getByLabelText(/Label:/i);
     
     expect(inputElement).toBeVisible();
     expect(inputElement).toBeValid();
@@ -105,7 +105,7 @@ describe("ActionGlossSearchCell render tests", (): void => {
     const divCell = button.parentElement as HTMLElement;
     expect(divCell).toHaveClass("actionGlossSearchCell");
 
-    const inputElement = screen.getByLabelText(/Label:/i) as HTMLInputElement;    
+    const inputElement = screen.getByLabelText(/Label:/i);    
     expect(inputElement).toBeVisible();
     expect(inputElement).toBeValid();
     expect(inputElement).toHaveValue(BCI_SEARCH_PROPOSED_GLOSS);

@@ -17,7 +17,7 @@ describe("Test vectorStoreHandler", () => {
   }, 25000);
 
   describe("Test load()", () => {
-    it("the vector store should be loaded", async () => {
+    it("the vector store should be loaded", () => {
       expect(vectorStore).toBeTruthy();
     });
 

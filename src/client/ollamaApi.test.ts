@@ -121,6 +121,9 @@ describe("ollamaApi unit tests", (): void => {
     test("should call ollama.chat with stream: true when streamResp is true", async () => {
       // For a stream, Ollama returns an AsyncIterable. Mock it using an async generator.
       async function* mockStream() {
+        // Add a mock `await` to satisfies the linter. Otherwise, the linter complains an async
+        // function is not waiting for anything inside it.
+        await Promise.resolve();
         yield { message: { content: "Pa" } };
         yield { message: { content: "ris" } };
       }
@@ -134,7 +137,7 @@ describe("ollamaApi unit tests", (): void => {
       );
       
       // Verify we actually get the async iterable back
-      expect(typeof response[Symbol.asyncIterator]).toBe("function");
+      expect(typeof (response as AsyncIterable<unknown>)[Symbol.asyncIterator]).toBe("function");
     });
   });
 });

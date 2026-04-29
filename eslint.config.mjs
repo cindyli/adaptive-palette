@@ -15,8 +15,12 @@ const compat = new FlatCompat({
 });
 
 export default [{
-  ignores: ["**/dist/", "**/node_modules/"],
-}, ...compat.extends("eslint:recommended", "plugin:@typescript-eslint/recommended"), {
+  ignores: ["**/dist/", "**/node_modules/", "**/*.d.ts", "**/*.cjs"],
+}, ...compat.extends(
+  "eslint:recommended",
+  "plugin:@typescript-eslint/recommended",
+  "plugin:@typescript-eslint/recommended-type-checked"
+), {
   plugins: {
     "@typescript-eslint": typescriptEslint,
   },
@@ -30,6 +34,10 @@ export default [{
     parser: tsParser,
     ecmaVersion: "latest",
     sourceType: "module",
+    parserOptions: {
+      project: "./tsconfig.eslint.json",
+      tsconfigRootDir: __dirname,
+    },
   },
 
   rules: {
@@ -37,5 +45,20 @@ export default [{
     "linebreak-style": ["error", "unix"],
     quotes: ["error", "double"],
     semi: ["error", "always"],
+
+    // Disable unsafe-* rules: these require fully typed code and are too noisy
+    // for the existing JS codebase. Re-enable incrementally as types improve.
+    "@typescript-eslint/no-unsafe-assignment": "off",
+    "@typescript-eslint/no-unsafe-member-access": "off",
+    "@typescript-eslint/no-unsafe-call": "off",
+    "@typescript-eslint/no-unsafe-return": "off",
+    "@typescript-eslint/no-unsafe-argument": "off",
+  },
+},
+// unbound-method is a false positive with Jest's expect(mock.fn) pattern
+{
+  files: ["**/*.test.ts", "**/*.test.js"],
+  rules: {
+    "@typescript-eslint/unbound-method": "off",
   },
 }];

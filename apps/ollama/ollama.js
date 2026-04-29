@@ -18,20 +18,16 @@ const NO_AVAILABLE_MODELS = "No Available Models";
 
 /**
  * Retrieve a list of LLMs available from the service
- * @return {Array}    - Array of the names of the available models.
+ * @return {Promise<string[]>} - Array of the names of the available models.
  */
-async function getModelNames () {
-  let modelNames = [];
+async function getModelNames() {
   try {
     const list = await ollama.list();
-    list.models.forEach( (model) => {
-      modelNames.push(model.name);
-    });
-  }
-  catch (error) {
+    return list.models.map(model => model.name);
+  } catch (error) {
     console.debug(error);
+    return [];
   }
-  return modelNames;
 }
 
 /**
@@ -122,10 +118,10 @@ function askClicked(event) {
   // Empty out the response area
   document.getElementById("ollamaOutput").innerText = "Working...";
   if (event.target.id === "singleSentence") {
-    executeAsk(singleSentence);
+    void executeAsk(singleSentence);
   }
   else {
-    executeAsk();
+    void executeAsk();
   }
 }
 
@@ -133,7 +129,7 @@ function askClicked(event) {
  * Function for passing the chat prompt to the ollama service.
  * @param {String} query      - The prompt string to query the service with.
  * @param {String} modelName  - The name of the LLM to query.
- * @return {Object}           - The response from the service.
+ * @return {Promise<Object>}  - The response from the service.
  */
 async function queryChat (query, modelName) {
   let messageArray = [];
@@ -172,14 +168,14 @@ async function executeAsk (addSingleToPrompt) {
   }
   console.debug(`executeAsk(): prompt is "${promptText}"`);
   if (document.getElementById("allModels").checked) {
-    queryEachModel(promptText);
+    void queryEachModel(promptText);
   }
   else if (modelInSelect !== NO_AVAILABLE_MODELS) {
     const response = await queryChat(promptText, modelInSelect);
-    outputResult(response, document.getElementById("ollamaOutput"), "No Result");
+    void outputResult(response, document.getElementById("ollamaOutput"), "No Result");
   }
   else {
-    outputResult([], document.getElementById("ollamaOutput"), "No Result");
+    void outputResult([], document.getElementById("ollamaOutput"), "No Result");
   }
 }
 
@@ -193,6 +189,10 @@ async function executeAsk (addSingleToPrompt) {
  */
 async function outputResult(response, outputEl, defaultMsg) {
   outputEl.innerText = "";
+  // As this is a .js file instead of a .ts file, we don't have the benefit of
+  // typing the `response` as an AsyncIterable<ChatResponse>. So have to ignore
+  // the type checking for the `for await` loop.
+  // eslint-disable-next-line @typescript-eslint/await-thenable
   for await (const aPart of response) {
     console.debug(aPart.message.content);
     outputEl.innerText += aPart.message.content;
@@ -237,7 +237,7 @@ async function queryEachModel (promptText) {
   const names = await getModelNames();
   let count = 0;
   names.forEach ((modelName) => {
-    queryChat(promptText, modelName)
+    await queryChat(promptText, modelName)
       .then(async (response) => {
         const outputEl = createOutputSection(modelName);
         await outputResult(response, outputEl, "No Result");
@@ -246,9 +246,11 @@ async function queryEachModel (promptText) {
         // Clear the general "Working..." message after all models have been
         // queried, and scroll to the bottom
         if (count === names.length) {
-          outputResult([], document.getElementById("ollamaOutput"), "");
+          await outputResult([], document.getElementById("ollamaOutput"), "");
           document.body.scrollTop = document.body.scrollHeight;
         }
+      }).catch((error) => {
+        console.error(`Error querying model ${modelName}:`, error);
       });
   });
 }
@@ -299,12 +301,16 @@ const justAskButton = document.getElementById("justAsk");
 const singleSentenceButton = document.getElementById("singleSentence");
 const promptTextArea = document.getElementById("prompt");
 
-justAskButton.addEventListener("click", askClicked);
-singleSentenceButton.addEventListener("click", askClicked);
+justAskButton.addEventListener("click", () => { void askClicked().catch(error => {
+  console.error("Failed to execute ask when clicking justAsk:", error);
+});; });
+singleSentenceButton.addEventListener("click", () => { void askClicked().catch(error => {
+  console.error("Failed to execute ask when clicking singleSentence:", error);
+});; });
 document.getElementById("modelSelect").addEventListener("change", setSelectedModel);
 document.getElementById("allModels").addEventListener("click", useAllModelsClicked);
-document.getElementById("flushModelSections").addEventListener("click", flushModelOutputSections);
+document.getElementById("flushModelSections").addEventListener("click", () => { void flushModelOutputSections(); });
 promptTextArea.addEventListener("input", setAskButtonsEnabledState);
 
 // Set up the model <select> element
-initModelSelect();
+void initModelSelect();
