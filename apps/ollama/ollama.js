@@ -187,7 +187,8 @@ async function executeAsk (addSingleToPrompt) {
 
 /**
  * Process the response from the ollama service and add it to the web page.
- * @param {Array} response    -  Array of objects, an ordered set of parts.
+ * @param {AsyncIterable<{message: {content: string}}>} response -  Array of
+ *                               objects, an ordered set of parts.
  * @param {Element} outputEl  -  The DOM element to put the entire resonse
  *                               message into.
  * @param {String} defaultMsg -  Optional default msssage when the `response`
@@ -195,13 +196,10 @@ async function executeAsk (addSingleToPrompt) {
  */
 async function outputResult(response, outputEl, defaultMsg) {
   outputEl.innerText = "";
-  // As this is a .js file instead of a .ts file, we don't have the benefit of
-  // typing the `response` as an AsyncIterable<ChatResponse>. So have to ignore
-  // the type checking for the `for await` loop.
-  // eslint-disable-next-line @typescript-eslint/await-thenable
   for await (const aPart of response) {
-    console.debug(aPart.message.content);
-    outputEl.innerText += aPart.message.content;
+    const part = /** @type {{message: {content: string}}} */ (aPart);
+    console.debug(part.message.content);
+    outputEl.innerText += part.message.content;
     document.body.scrollIntoView({behavior: "smooth", block: "end"});
   }
   if (outputEl.innerText === "") {
@@ -305,7 +303,7 @@ async function flushModelOutputSections () {
 
 const justAskButton = document.getElementById("justAsk");
 const singleSentenceButton = document.getElementById("singleSentence");
-const promptTextArea = document.getElementById("prompt");
+const promptTextArea = /** @type {HTMLTextAreaElement} */ (document.getElementById("prompt"));
 
 justAskButton.addEventListener("click", () => { void askClicked().catch(error => {
   console.error("Failed to execute ask when clicking justAsk:", error);
