@@ -48,7 +48,6 @@ export default [{
 
     // Disable unsafe-* rules: these require fully typed code and are too noisy
     // for the existing JS codebase. Re-enable incrementally as types improve.
-    "@typescript-eslint/no-unsafe-call": "off",
     "@typescript-eslint/no-unsafe-return": "off",
     "@typescript-eslint/no-unsafe-argument": "off",
   },

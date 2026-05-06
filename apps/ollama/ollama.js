@@ -301,16 +301,12 @@ async function flushModelOutputSections () {
   document.getElementById("ollamaOutput").innerText = "";
 }
 
-const justAskButton = document.getElementById("justAsk");
-const singleSentenceButton = document.getElementById("singleSentence");
+const justAskButton = /** @type {HTMLButtonElement} */ (document.getElementById("justAsk"));
+const singleSentenceButton = /** @type {HTMLButtonElement} */ (document.getElementById("singleSentence"));
 const promptTextArea = /** @type {HTMLTextAreaElement} */ (document.getElementById("prompt"));
 
-justAskButton.addEventListener("click", () => { void askClicked().catch(error => {
-  console.error("Failed to execute ask when clicking justAsk:", error);
-});; });
-singleSentenceButton.addEventListener("click", () => { void askClicked().catch(error => {
-  console.error("Failed to execute ask when clicking singleSentence:", error);
-});; });
+justAskButton.addEventListener("click", askClicked);
+singleSentenceButton.addEventListener("click", askClicked);
 document.getElementById("modelSelect").addEventListener("change", setSelectedModel);
 document.getElementById("allModels").addEventListener("click", useAllModelsClicked);
 document.getElementById("flushModelSections").addEventListener("click", () => { void flushModelOutputSections(); });

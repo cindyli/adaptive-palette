@@ -16,7 +16,7 @@
 
 import { RecursiveCharacterTextSplitter } from "@langchain/classic/text_splitter";
 import { FaissStore } from "@langchain/community/vectorstores/faiss";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
+import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/huggingface_transformers";
 import { TextLoader } from "@langchain/classic/document_loaders/fs/text";
 import fs from "fs";
 
