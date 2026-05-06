@@ -45,10 +45,6 @@ export default [{
     "linebreak-style": ["error", "unix"],
     quotes: ["error", "double"],
     semi: ["error", "always"],
-
-    // Disable unsafe-* rules: these require fully typed code and are too noisy
-    // for the existing JS codebase. Re-enable incrementally as types improve.
-    "@typescript-eslint/no-unsafe-argument": "off",
   },
 },
 // unbound-method is a false positive with Jest's expect(mock.fn) pattern
