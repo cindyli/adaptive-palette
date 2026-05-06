@@ -46,7 +46,7 @@ if (config.rag.enableRag) {
 
   // Route to search the vector store
   app.post("/query-vector", async (req, res) => {
-    const { query } = req.body;
+    const { query } = req.body as { query: string };
 
     try {
       // Convert query to vector and search the index

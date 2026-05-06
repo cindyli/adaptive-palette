@@ -40,7 +40,7 @@ async function getModelNames() {
  *   - `NO_AVAILABLE_MODELS`
  */
 async function initModelSelect () {
-  const selectElement = document.getElementById("modelSelect");
+  const selectElement = /** @type {HTMLSelectElement} */ (document.getElementById("modelSelect"));
   const modelNames = await getModelNames();
 
   if (modelNames.length === 0) {
@@ -72,8 +72,8 @@ async function initModelSelect () {
  *                     `false` otherwise.
  */
 function enableDisableModelSelect () {
-  const selectElement = document.getElementById("modelSelect");
-  const allModelsCheckbox = document.getElementById("allModels");
+  const selectElement = /** @type {HTMLSelectElement} */ (document.getElementById("modelSelect"));
+  const allModelsCheckbox = /** @type {HTMLInputElement} */ (document.getElementById("allModels"));
   if (allModelsCheckbox.checked) {
     selectElement.setAttribute("disabled", "disabled");
   }
@@ -89,7 +89,7 @@ function enableDisableModelSelect () {
  * `nameOfModelToUse` based on the selection.
  */
 function setSelectedModel () {
-  const selectElement = document.getElementById("modelSelect");
+  const selectElement = /** @type {HTMLSelectElement} */ (document.getElementById("modelSelect"));
   nameOfModelToUse = selectElement.selectedOptions[0].label;
 }
 
@@ -103,7 +103,8 @@ function useAllModelsClicked () {
     nameOfModelToUse = USE_ALL_MODELS;
   }
   else {
-    nameOfModelToUse = document.getElementById("modelSelect").selectedOptions[0].label;
+    const selectElement = /** @type {HTMLSelectElement} */ (document.getElementById("modelSelect"));
+    nameOfModelToUse = selectElement.selectedOptions[0].label;
   }
 }
 
@@ -132,8 +133,10 @@ function askClicked(event) {
  * @return {Promise<Object>}  - The response from the service.
  */
 async function queryChat (query, modelName) {
-  let messageArray = [];
-  const textFromSystemPrompt = document.getElementById("systemPrompt").value.trim();
+  /** @type {Array<{role: string, content: string}>} */
+  const messageArray = [];
+  const systemPromptEl = /** @type {HTMLTextAreaElement} */ (document.getElementById("systemPrompt"));
+  const textFromSystemPrompt = systemPromptEl.value.trim();
   if (textFromSystemPrompt !== "") {
     messageArray.push({
       role: "system",
@@ -161,13 +164,16 @@ async function queryChat (query, modelName) {
  *                                      grammatically correct sentence".
  */
 async function executeAsk (addSingleToPrompt) {
-  const modelInSelect = document.getElementById("modelSelect").selectedOptions[0].label;
-  let promptText = document.getElementById("prompt").value;
+  const selectElement = /** @type {HTMLSelectElement} */ (document.getElementById("modelSelect"));
+  const promptEl = /** @type {HTMLTextAreaElement} */ (document.getElementById("prompt"));
+  const allModelsEl = /** @type {HTMLInputElement} */ (document.getElementById("allModels"));
+  const modelInSelect = selectElement.selectedOptions[0].label;
+  let promptText = promptEl.value;
   if (addSingleToPrompt) {
     promptText += addSingleToPrompt;
   }
   console.debug(`executeAsk(): prompt is "${promptText}"`);
-  if (document.getElementById("allModels").checked) {
+  if (allModelsEl.checked) {
     void queryEachModel(promptText);
   }
   else if (modelInSelect !== NO_AVAILABLE_MODELS) {

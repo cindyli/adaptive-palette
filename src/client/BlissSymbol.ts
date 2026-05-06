@@ -54,7 +54,7 @@ export function BlissSymbol (props: BlissSymbolPropsType): VNode {
   // Also TypeScript-ESLint does not allow explicit `any` types; override that
   // rule for this case.
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
   const templateStringArray = [`${svgMarkupString}`] as any;
   templateStringArray.raw = [`${svgMarkupString}`];
 
