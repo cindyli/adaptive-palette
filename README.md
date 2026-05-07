@@ -142,6 +142,14 @@ To lint the source code, run:
 npm run lint
 ```
 
+### Type Checking
+
+To type check the source code, run:
+
+```bash
+npm run typecheck
+```
+
 ### Run Tests
 
 To run tests, run:
