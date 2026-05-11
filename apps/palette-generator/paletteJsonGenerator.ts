@@ -140,7 +140,7 @@ function findBciAvId(label: string, blissGlosses: BlissGlossEntry[]): MatchInfo[
       if (gloss.composition) {
         fullComposition = decomposeBciAvId(gloss.composition);
         const compArr = Array.isArray(gloss.composition) ? gloss.composition : [gloss.composition];
-        const fullArr = Array.isArray(fullComposition) ? fullComposition : (fullComposition !== undefined ? [fullComposition] : []);
+        const fullArr = Array.isArray(fullComposition) ? fullComposition : [fullComposition];
         equalCompositions = fullArr.join("") === compArr.join("");
       }
       else {
