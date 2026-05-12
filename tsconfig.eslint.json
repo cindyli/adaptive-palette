@@ -4,18 +4,14 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["jest", "node"],
-    "noEmit": true,
     "allowJs": true,
     "checkJs": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-		"resolveJsonModule": true,
-    "esModuleInterop": true,
-    "alwaysStrict": true,
-    "skipLibCheck": true
+    "resolveJsonModule": true,
+    "esModuleInterop": true
   },
-  "include": [
-		"node_modules/vite/client.d.ts",
-		"src/client/**/*"
-	]
+  "include": ["**/*.ts", "**/*.js", "**/*.mjs", "**/*.cjs"],
+  "files": ["config/config.d.ts", "src/client/index.d.ts"]
 }

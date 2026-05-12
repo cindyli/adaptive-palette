@@ -55,10 +55,10 @@ describe("CommandTelegraphicCompletions component", () => {
 
     const cancelButton = await screen.findByRole("button", { name: CANCEL_BUTTON_LABEL });
     expect(cancelButton).toBeDisabled();
-    const llmSelect = screen.getByRole("combobox", { name: /llm/i }) as HTMLSelectElement;
+    const llmSelect = screen.getByRole<HTMLSelectElement>("combobox", { name: /llm/i });
     expect(llmSelect.value).toBe(NO_MODELS_AVAILABLE);
-    
-    const llmOptions = screen.getAllByRole("option") as HTMLOptionElement[];
+
+    const llmOptions = screen.getAllByRole<HTMLOptionElement>("option");
     expect(llmOptions).toHaveLength(1);
     expect(llmOptions[0].value).toBe(NO_MODELS_AVAILABLE);
   });
@@ -72,11 +72,11 @@ describe("CommandTelegraphicCompletions component", () => {
     const cancelButton = await screen.findByRole("button", { name: CANCEL_BUTTON_LABEL });
     expect(cancelButton).toBeEnabled(); 
 
-    const llmSelect = screen.getByRole("combobox", { name: /llm/i }) as HTMLSelectElement;
-    expect(llmSelect.value).toBe(LLM_NAMES[0]);    
-    const llmOptions = screen.getAllByRole("option") as HTMLOptionElement[];
+    const llmSelect = screen.getByRole<HTMLSelectElement>("combobox", { name: /llm/i });
+    expect(llmSelect.value).toBe(LLM_NAMES[0]);
+    const llmOptions = screen.getAllByRole<HTMLOptionElement>("option");
     expect(llmOptions).toHaveLength(3);
-    
+
     const optionValues = llmOptions.map(opt => opt.value);
     expect(optionValues).toEqual(LLM_NAMES);
   });
@@ -94,10 +94,10 @@ describe("CommandTelegraphicCompletions component", () => {
     const cancelButton = await screen.findByRole("button", { name: CANCEL_BUTTON_LABEL });
     expect(cancelButton).toBeEnabled();
 
-    const llmSelect = screen.getByRole("combobox", { name: /llm/i }) as HTMLSelectElement;
+    const llmSelect = screen.getByRole<HTMLSelectElement>("combobox", { name: /llm/i });
     expect(llmSelect.value).toBe(LLM_NAMES[0]);
-    
-    const llmOptions = screen.getAllByRole("option") as HTMLOptionElement[];
+
+    const llmOptions = screen.getAllByRole<HTMLOptionElement>("option");
     expect(llmOptions).toHaveLength(3);
   });
 });

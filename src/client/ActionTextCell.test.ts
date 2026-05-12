@@ -20,7 +20,7 @@ import { speak } from "./GlobalUtils";
 
 // Mock the GlobalUtils module so we can spy on the `speak` function
 jest.mock("./GlobalUtils", () => ({
-  ...jest.requireActual("./GlobalUtils"),
+  ...jest.requireActual<typeof import("./GlobalUtils")>("./GlobalUtils"),
   speak: jest.fn(),
 }));
 

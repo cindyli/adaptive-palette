@@ -45,8 +45,7 @@ export async function getModelNames(): Promise<string[]> {
  *                                https://github.com/ollama/ollama-js/issues/135
  *                                https://github.com/ollama/ollama-js/issues/187
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function queryChat (query: string, modelName: string, streamResp: boolean, systemPrompt?: string): Promise<ChatResponse | any> {
+export async function queryChat (query: string, modelName: string, streamResp: boolean, systemPrompt?: string): Promise<ChatResponse | AsyncIterable<ChatResponse>> {
   const messageArray = [];
   if (systemPrompt && systemPrompt.length !== 0) {
     messageArray.push({
