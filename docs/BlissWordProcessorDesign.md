@@ -23,12 +23,11 @@ round-trip to Ollama for context-dependent reasoning.
 What the engine **owns** (mechanical, observable, position-locked):
 
 - Per-symbol gloss/explanation lookup from the BCI-AV dictionary.
-- Position tagging (`first` / `last` / `middle` / `only`) for every input ID.
-- Indicator detection and merging from `INDICATOR_SEMANTICS` (extracts word-level POS, tense, etc.).
-- Modifier role filtering from `MODIFIER_SEMANTICS` based on position (prefix-only at first, suffix-only at last,
-  both with `roleAmbiguous=true` at middle).
 - Sub-sequence dictionary matching: every contiguous slice of length ≥ 2 is checked (with indicators stripped on
   both sides) against the dictionary's canonical compositions, surfacing all matches as hints.
+- Indicator detection and merging from `INDICATOR_SEMANTICS` (extracts word-level POS, tense, etc.).
+- Modifier role resolution from `MODIFIER_SEMANTICS` using each modifier's index in `inputIds`. Locked-role
+  modifiers emit role-filtered semantics; structurally ambiguous modifiers carry `roleAmbiguous: true`.
 
 What the engine **does NOT do**: choose between roles at ambiguous positions, decide sub-word boundaries when
 multiple overlapping matches exist, or invent meaning. Those are interpretive and belong to the LLM.
@@ -79,18 +78,15 @@ export type ProcessOptions = {
   candidateCount?: number;   // default 5
 };
 
-export type SymbolPosition = "only" | "first" | "last" | "middle";
-
 export type SymbolAnnotation = {
   id: string;
-  position: SymbolPosition;
   gloss?: string;
   explanation?: string;
   isCharacter?: boolean;
   indicator?: IndicatorSemantics;       // present if id is an indicator
   modifier?: {
     semantics: ModifierSemantics;
-    roleAmbiguous: boolean;             // true at "middle" position when both prefix and suffix are capable
+    roleAmbiguous?: true;               // present only when ambiguous; omitted when role is locked
   };
 };
 
@@ -126,17 +122,23 @@ export function buildUserPrompt(ctx: ProcessorContext): string;
 
 ### Per-symbol annotation
 
-Iterate `inputIds`. For each ID at index `i`:
+Iterate `inputIds`. For each ID at index `i` (length `N`):
 
 - Lookup gloss/explanation/isCharacter from `adaptivePaletteGlobals.bciAvSymbols`.
-- Position: `only` if length=1, else `first` (i=0), `last` (i=N-1), `middle` otherwise.
 - Indicator: if id is a key in `INDICATOR_SEMANTICS`, attach the entry to `annotation.indicator`.
 - Modifier: if id is a key in `MODIFIER_SEMANTICS`, inspect the entry's declared positions
-  (walking `or` and `and` branches) to determine prefix-capable / suffix-capable, then:
-  - `first` or `only` → keep modifier (prefix) semantics if prefix-capable, else skip; `roleAmbiguous=false`.
-  - `last` → keep specifier (suffix) semantics if suffix-capable, else skip; `roleAmbiguous=false`.
-  - `middle` → keep all role semantics; `roleAmbiguous=true` if both prefix-capable and suffix-capable,
-    `false` if only one role applies.
+  (walking `or` and `and` branches) to determine prefix-capable / suffix-capable, then apply by index:
+  - `i === 0` (first / only):
+    - prefix-capable → emit prefix-role semantics. Omit `roleAmbiguous`.
+    - else (suffix-only) → emit suffix-role semantics + `roleAmbiguous: true`.
+  - `i === N - 1` (last):
+    - suffix-capable → emit suffix-role semantics. Omit `roleAmbiguous`.
+    - else (prefix-only) → emit prefix-role semantics + `roleAmbiguous: true`.
+  - middle (`0 < i < N - 1`):
+    - emit all role semantics + `roleAmbiguous: true`.
+
+Non-modifier IDs do not need position information — `inputIds` ordering is the only signal the LLM
+requires for them.
 
 ### Indicator merge
 
@@ -236,20 +238,20 @@ You interpret one Blissymbolics word into ranked natural-language candidates.
 Input is a single Bliss word as a flat array of BCI-AV symbol IDs. The word may flatten multiple sub-words;
 you must decide sub-word boundaries using the structured hints provided.
 
-Bliss structural rule for a (sub-)word:
+Bliss structural rule for a word including sub-words and the word at the top level:
   (0+ modifiers) + (1 classifier) + (0 or 1 indicator) + (0+ specifiers / modifiers)
 
 Composition patterns:
 - Classifier + specifier produces a hyponym of the classifier. Example: citrus_fruit/small -> clementine.
-- A modifier prefix transforms the classifier. Example: opposite_of/hot -> cold.
+- A modifier transforms the classifier. Example: opposite_of/hot -> cold.
 
 Role rules by position:
-- A symbol that can act as either modifier (prefix) or specifier (suffix) is locked by position: prefix-only
-  at the absolute first position, suffix-only at the absolute last position, and either role at middle
-  positions.
+- Some symbols can act as either a modifier or a specifier. Example:
+meat/part -> diced meat; part/year -> season
 
 Use the provided context fields:
-- "annotations" gives gloss, explanation, position, and role semantics per ID. "modifier.roleAmbiguous=true"
+- "annotations" gives gloss, explanation, and (when relevant) role semantics per ID, in the same order
+  as "inputIds". Derive first / last position from the array index when needed. "modifier.roleAmbiguous=true"
   means you must pick the role from context.
 - "indicatorEffects" is the merged grammatical effect (POS, tense, etc.) that applies at the WHOLE-WORD
   level.
@@ -272,15 +274,15 @@ Return ONLY a JSON array of candidate words or phrases, best-first. No prose, no
     "features": { "form": "infinitive" }
   },
   "annotations": [
-    { "id": "222", "gloss": "word_for_222", "explanation": "...", "position": "first" },
-    { "id": "333", "gloss": "word_for_333", "explanation": "...", "position": "middle",
+    { "id": "222", "gloss": "word_for_222", "explanation": "..." },
+    { "id": "333", "gloss": "word_for_333", "explanation": "...",
       "modifier": {
         "semantics": { "features": { "position": "suffix", "middle-position": "suffix-first-part" } },
         "roleAmbiguous": true
       }
     },
-    { "id": "444", "gloss": "word_for_444", "explanation": "...", "position": "middle" },
-    { "id": "555", "gloss": "verb_indicator_infinitive", "position": "last",
+    { "id": "444", "gloss": "word_for_444", "explanation": "..." },
+    { "id": "555", "gloss": "verb_indicator_infinitive",
       "indicator": { "POS": "verb", "category": "grammatical", "features": { "form": "infinitive" } }
     }
   ],
@@ -301,14 +303,50 @@ Return JSON array of candidate interpretations.
 
 The `"to "` prefixes reflect the verb-infinitive `indicatorEffects` applied at the word level.
 
+### Walkthrough — resolving middle-modifier ambiguity
+
+The engine flagged `333` with `modifier.roleAmbiguous: true`. The engine could not decide whether `333` acts
+as a modifier (prefix that transforms what follows) or a specifier (suffix that narrows what precedes). The
+LLM must pick one using the structural hints.
+
+Two overlapping `subSequenceMatches` are provided:
+
+- `[0, 2)` → `compound_222_333`. Implies sub-word `222 + 333` with `333` acting as specifier of `222`,
+  leaving `444` as a separate sub-word.
+- `[1, 3)` → `compound_333_444`. Implies sub-word `333 + 444` with `333` acting as modifier of `444`,
+  leaving `222` as a separate (preceding) sub-word.
+
+Reasoning trace expected from the LLM:
+
+1. Read each candidate's matched gloss and compare it to the per-ID glosses and explanations in
+   `annotations`. Pick the decomposition whose meaning coheres best in the target language.
+2. Cross-check the unchosen ID(s) as a separate sub-word: does the classifier / specifier / modifier
+   structure of the remainder make sense?
+3. Apply `indicatorEffects` (here: POS=verb, form=infinitive) at the WHOLE-WORD level after sub-word
+   composition. The infinitive marker propagates to the top-level rendering (e.g. `"to ..."` in English).
+4. Rank candidates by overall semantic coherence — best first. If both decompositions are plausible,
+   surface both in the output list.
+
+Key takeaway: `roleAmbiguous: true` is not a defect signal — it is an explicit request to use
+`subSequenceMatches` + glosses to commit to a role, then justify it through the resulting
+interpretation's plausibility.
+
+This walkthrough is developer-facing documentation. It is **not** sent to the LLM verbatim. The condensed
+structural-rule text already in the system prompt is what the LLM sees per call. If runtime testing shows
+the LLM struggles with middle-modifier ambiguity, distill key lines from this walkthrough into the system
+prompt itself — but defer until evidence warrants the prompt-size cost.
+
 ## Testing
 
 `src/client/blissWordProcessor.test.ts`:
 
 - `buildProcessorContext`:
   - Empty input → empty arrays + empty effects.
-  - Single ID → `position: 'only'`, gloss attached.
-  - Modifier-capable symbol at first / last / middle → correct `roleAmbiguous` and role-filtered semantics.
+  - Single ID (non-modifier) → annotation present with gloss; no `modifier` block; no `position` field.
+  - Modifier-capable symbol at first / last / middle → role-filtered `modifier.semantics`; `roleAmbiguous`
+    present only when ambiguous, omitted when role is locked.
+  - Modifier at first but only suffix-capable → emits suffix semantics + `roleAmbiguous: true`.
+  - Modifier at last but only prefix-capable → emits prefix semantics + `roleAmbiguous: true`.
   - Multiple indicators → merged `indicatorEffects`, last-wins on conflict.
   - Sub-sequence match: input `[A, B, C]`, dict entry canonicalizing to `[A, B]` → one match at `[0, 2)`.
   - Indicator stripping: input `[A, IND, B]` matches dict entries canonicalizing to `[A, B]`.
