@@ -13,5 +13,5 @@
 
 import v8 from "node:v8";
 if (typeof globalThis.structuredClone === "undefined") {
-  globalThis.structuredClone = (val: unknown) => v8.deserialize(v8.serialize(val));
+  globalThis.structuredClone = (val: unknown) => v8.deserialize(v8.serialize(val)) as unknown;
 }
