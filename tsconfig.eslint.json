@@ -1,17 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "types": ["jest", "node"],
-    "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
-    "resolveJsonModule": true,
-    "esModuleInterop": true
-  },
+  "extends": "./tsconfig",
   "include": ["**/*.ts", "**/*.js", "**/*.mjs", "**/*.cjs"],
   "files": ["config/config.d.ts", "src/client/index.d.ts"]
 }

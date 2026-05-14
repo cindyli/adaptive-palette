@@ -1,21 +1,8 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "types": ["jest", "node"],
-    "noEmit": true,
-    "allowJs": true,
-    "checkJs": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
-		"resolveJsonModule": true,
-    "esModuleInterop": true,
-    "alwaysStrict": true,
-    "skipLibCheck": true
-  },
+  "extends": "./tsconfig",
   "include": [
-		"node_modules/vite/client.d.ts",
-		"src/client/**/*"
-	]
+    "config/**/*",
+    "node_modules/vite/client.d.ts",
+    "src/client/**/*"
+  ]
 }

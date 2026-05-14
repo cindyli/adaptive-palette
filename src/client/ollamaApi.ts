@@ -56,8 +56,7 @@ export async function queryChat (query: string, modelName: string, streamResp: b
   messageArray.push({ role: "user", content: query });
 
   // `ollama.chat()` is overloaded to support streaming vs. non-streaming and
-  // disallows the following way of calling it when running tests using
-  // jest/node:
+  // disallows the following way of calling it when running tests
   // ...
   //   const response = await ollama.chat({
   //    model: modelName,

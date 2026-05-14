@@ -10,7 +10,6 @@
  */
 
 import { render, screen, cleanup } from "@testing-library/preact";
-import "@testing-library/jest-dom";
 import { html } from "htm/preact";
 
 import { sentenceCompletionsSignal } from "./GlobalData";
@@ -60,7 +59,7 @@ describe("SentenceCompletionsPalette render tests", (): void => {
     // There should be no `WORKING_MESSAGE` but there should be a completions
     // palette.
     expect(screen.queryByText(WORKING_MESSAGE)).toBeNull();
-    
+
     const paletteElement = document.querySelector(`[data-palettename="${SENTENCE_COMPLETIONS_NAME}"]`);
     expect(paletteElement).toBeVisible();
 

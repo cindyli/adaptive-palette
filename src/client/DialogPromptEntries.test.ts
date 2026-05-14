@@ -10,7 +10,6 @@
  */
 
 import { render, screen } from "@testing-library/preact";
-import "@testing-library/jest-dom";
 import { html } from "htm/preact";
 
 import { SYSTEM_PROMPTS_KEY } from "./GlobalData";

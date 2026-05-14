@@ -10,14 +10,13 @@
  */
 
 import { render, screen, cleanup } from "@testing-library/preact";
-import "@testing-library/jest-dom";
 import { html } from "htm/preact";
 
 import { adaptivePaletteGlobals, changeEncodingContents } from "./GlobalData";
 
 import {
-  CommandTelegraphicCompletions, 
-  TELEGRAPHIC_BUTTON_LABEL, 
+  CommandTelegraphicCompletions,
+  TELEGRAPHIC_BUTTON_LABEL,
   CANCEL_BUTTON_LABEL,
   NO_MODELS_AVAILABLE
 } from "./CommandTelegraphicCompletions";
@@ -49,7 +48,7 @@ describe("CommandTelegraphicCompletions component", () => {
 
   test("Render the dialog, no LLMs available", async () => {
     render(html`<${CommandTelegraphicCompletions} stream=${false} />`);
-    
+
     const triggerButton = await screen.findByRole("button", { name: TELEGRAPHIC_BUTTON_LABEL });
     expect(triggerButton).toBeDisabled();
 
@@ -70,7 +69,7 @@ describe("CommandTelegraphicCompletions component", () => {
     expect(triggerButton).toBeDisabled(); // Disabled because payloads.length === 0
 
     const cancelButton = await screen.findByRole("button", { name: CANCEL_BUTTON_LABEL });
-    expect(cancelButton).toBeEnabled(); 
+    expect(cancelButton).toBeEnabled();
 
     const llmSelect = screen.getByRole<HTMLSelectElement>("combobox", { name: /llm/i });
     expect(llmSelect.value).toBe(LLM_NAMES[0]);
@@ -87,7 +86,7 @@ describe("CommandTelegraphicCompletions component", () => {
     changeEncodingContents.value = INPUT_CONTENTS;
 
     render(html`<${CommandTelegraphicCompletions} stream=${false} />`);
-    
+
     const triggerButton = await screen.findByRole("button", { name: TELEGRAPHIC_BUTTON_LABEL });
     expect(triggerButton).toBeEnabled();
 
