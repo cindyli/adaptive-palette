@@ -1,0 +1,13 @@
+{
+  "models": ["gemma4:12b"],
+  "chat": [
+    {
+      "match": "predict the next word",
+      "reply": "milk\njuice\nbutter\njam\ntea"
+    },
+    {
+      "match": "communication assistant",
+      "reply": "1. I would like bread and a cookie.\n2. Can I have bread and a cookie, please?"
+    }
+  ]
+}

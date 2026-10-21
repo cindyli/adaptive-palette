@@ -42,7 +42,8 @@ export default defineConfig({
           name: "node",
           include: [
             "./launcher/**/*.test.?(c|m)[jt]s",
-            "./scripts/**/*.test.?(c|m)[jt]s"
+            "./scripts/**/*.test.?(c|m)[jt]s",
+            "./videos/**/*.test.ts"
           ],
           environment: "node",
           // The launcher tests bind the one fixed port the launcher is allowed to use, so

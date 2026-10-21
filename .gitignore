@@ -11,3 +11,6 @@ dist-desktop
 # Testing related artifacts
 /**/__screenshots__/
 .vitest
+
+# Recorded feature videos
+videos/output
