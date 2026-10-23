@@ -225,7 +225,7 @@ async function main (): Promise<void> {
   const workDir = await mkdtemp(path.join(tmpdir(), `video-${name}-`));
   try {
     console.log(`1. Narrating ${steps.length} steps`);
-    const clips = steps.map((step) => path.join(workDir, `${step.id}.aiff`));
+    const clips = steps.map((step) => path.join(workDir, `${step.id}.wav`));
     const durations: number[] = [];
     for (const [index, step] of steps.entries()) {
       durations.push(await narrate(narration[step.id], lang, clips[index]));

@@ -5,10 +5,20 @@ after the UI changes.
 
 ## Requirements
 
-1. A Mac. Narration uses the built-in `say` command with the voice "Zoe (Premium)". Download it once:
-   System Settings → Accessibility → Spoken Content → System voice → Manage Voices → English (US) →
-   Zoe (Premium). You don't need to make it the system voice.
-2. ffmpeg and ffprobe. Install them one of two ways:
+1. A Mac.
+2. Kokoro, a free voice model that runs on your computer, for the narration. Install it once:
+
+   ```bash
+   brew install espeak-ng   # pronunciation; the copy Kokoro bundles fails on Intel Macs
+   K=~/.cache/adaptive-palette-kokoro
+   mkdir -p $K && cd $K
+   python3.11 -m venv venv   # Python 3.10 to 3.13; Intel Macs have no onnxruntime for 3.14
+   venv/bin/pip install kokoro-onnx soundfile
+   curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+   curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+   ```
+
+3. ffmpeg and ffprobe. Install them one of two ways:
    - `brew install ffmpeg`. Warnings that Xcode or the Command Line Tools are outdated can be ignored, but
      if Homebrew has no ready-made package for your Mac (common on Intel Macs), it builds ffmpeg and its
      dependencies from source. That can take hours or fail with older tools. Stop it (Ctrl+C) and use the
@@ -22,7 +32,7 @@ after the UI changes.
      ffmpeg -version   # check it runs
      ```
 
-3. Playwright's Chromium, already installed for the tests. If not: `npx playwright install chromium`.
+4. Playwright's Chromium, already installed for the tests. If not: `npx playwright install chromium`.
 
 No Ollama is needed. Model replies come from each video's `stubs.json`.
 
@@ -74,7 +84,7 @@ Watch the video and check that:
 
 ## Add a language
 
-1. Add a `say` voice for it to `VOICES` in `lib/Narrate.ts`. Download a Premium voice as in
-   "Requirements", then find its name with `say -v '?'`.
+1. Add a Kokoro voice and its pronunciation language to `VOICES` in `lib/Narrate.ts`. The voices are
+   listed at <https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md>.
 2. Add `narration.<lang>.json` and `description.<lang>.txt` to each video.
 3. Record with `--lang <lang>`.

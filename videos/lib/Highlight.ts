@@ -1,6 +1,7 @@
 /**
  * Draws on the page being recorded: a title card, an outline around the area being explained with the
- * rest of the screen dimmed, and a pointer that shows each click. Nothing flashes or pulses.
+ * rest of the screen dimmed, and a pointer that shows each click. Nothing flashes or pulses. Both are white
+ * edged in black, so they stand out on any image or text and differ from the app's yellow message caret.
  */
 import type { Page } from "playwright";
 
@@ -16,12 +17,13 @@ const OVERLAY_CSS = `
   }
   @keyframes videoFadeIn { from { opacity: 0; } }
   #videoHighlight {
-    display: none; border-radius: 6px; outline: 4px solid #ffd400;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+    display: none; border-radius: 6px; outline: 5px solid #fff;
+    box-shadow: 0 0 0 8px #000, 0 0 0 9999px rgba(0, 0, 0, 0.55);
   }
   #videoPointer {
-    display: none; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9); border: 3px solid #000;
+    display: none; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+    background: rgba(255, 0, 140, 0.35); border: 6px solid #fff;
+    box-shadow: 0 0 0 3px #000, inset 0 0 0 3px #000;
     transition: left ${POINTER_MOVE_MS}ms ease, top ${POINTER_MOVE_MS}ms ease;
   }
 `;
@@ -67,6 +69,7 @@ async function waitForTarget (page: Page, selector: string): Promise<void> {
 
 /**
  * Outline everything `selector` matches, as one box, and dim the rest. No selector removes the highlight.
+ * A highlight hides the pointer, so there is one place to look.
  */
 export async function highlight (page: Page, selector?: string): Promise<void> {
   if (selector) {
@@ -84,6 +87,7 @@ export async function highlight (page: Page, selector?: string): Promise<void> {
       box.style.display = "none";
       return;
     }
+    document.getElementById("videoPointer")!.style.display = "none";
     const left = Math.min(...rects.map((rect) => rect.left));
     const top = Math.min(...rects.map((rect) => rect.top));
     Object.assign(box.style, {
