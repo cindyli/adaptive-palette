@@ -60,6 +60,7 @@ Watch the video and check that:
 
 1. Symbols and captions are readable on a laptop screen.
 2. The narration matches what is on screen at every step.
+3. Changes between steps are smooth: no blank screen and no flash.
 
 ## Publish a video
 
@@ -73,14 +74,25 @@ Watch the video and check that:
 1. Create `scripts/<name>/` with `steps.ts`, `narration.en.json`, `description.en.txt` and `stubs.json`. Copy
    `scripts/welcome/`. The runner puts the chapters in place of the `{{chapters}}` line in the description.
 2. Each step has an `id`; `narration.<lang>.json` has the text for every id.
-3. Give the first step `title: true` to show its narration as a title card, for at least 3 seconds. A
-   title step mid-video works as a slide between parts.
+3. Give the first step `title: true` to show its narration as a title card, for at least 3 seconds. Give
+   `title` text to show that text on the card in place of the narration, which is still spoken. A title step
+   mid-video works as a slide between parts.
 4. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
    10 seconds long; the runner warns when they are not.
 5. List every model that `public/config.json` asks for in `stubs.json` `models`, or the first-run setup
    dialog covers the screen. The runner fails if the app asks Ollama for something with no stub.
 6. To show something no shipped palette has, export `prepare(context)` from `steps.ts` and route the
-   palette file to a changed copy there. `scripts/welcome/` does this to show a picture.
+   palette file to a changed copy there. `scripts/welcome/` does this to show pictures.
+
+When writing the steps:
+
+1. Reload the page or reset its data only in a step with a title card, so the reload is not seen. The card
+   stays up while the page reloads. `scripts/welcome/` does this in its `privacy` step.
+2. Highlight only what the narration is talking about. When there is nothing on screen to point at, such
+   as privacy, use a title card with short text.
+3. Keep title card text short. The runner removes a trailing period.
+4. The runner handles the look: a magenta outline with the rest dimmed, a box that glides between areas,
+   and a pointer for each click. A click hides the highlight, and a highlight hides the pointer.
 
 ## Add a language
 

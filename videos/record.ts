@@ -32,9 +32,9 @@ export interface Step {
   action?: (page: Page) => Promise<void>;
   /** A selector for the area to outline. None shows the whole screen. */
   highlight?: string;
-  /** Show the narration as a title card covering the screen, for at least `TITLE_SECONDS`. Also works
-   * mid-video, as a slide between parts. */
-  title?: boolean;
+  /** Show a title card covering the screen, for at least `TITLE_SECONDS`: this text, or the narration when
+   * `true`. The narration is still spoken. Also works mid-video, as a slide between parts. */
+  title?: boolean | string;
 }
 
 /** What a script's `steps.ts` exports. */
@@ -135,11 +135,11 @@ async function recordSteps (
     });
     const unanswered = await installStubs(context, stubs);
     await prepare?.(context);
+    await installOverlay(context);
     const page = await context.newPage();
     const videoStart = Date.now();
     await page.goto(`http://localhost:${PORT}/`);
     await page.locator(".screenPalette").waitFor();
-    await installOverlay(page);
 
     const timed: TimedStep[] = [];
     const t0 = Date.now();
@@ -150,7 +150,7 @@ async function recordSteps (
       try {
         await clearOverlay(page);
         if (step.title) {
-          await showTitle(page, narration[step.id]);
+          await showTitle(page, typeof step.title === "string" ? step.title : narration[step.id]);
         }
         await step.action?.(page);
         await highlight(page, step.highlight);

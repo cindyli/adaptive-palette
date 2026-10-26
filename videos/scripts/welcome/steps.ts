@@ -4,25 +4,33 @@
 import path from "node:path";
 import type { BrowserContext } from "playwright";
 import type { Step } from "../../record.ts";
-import { click, installOverlay } from "../../lib/Highlight.ts";
+import { click } from "../../lib/Highlight.ts";
 
 const MESSAGE = "#content-encoding-area";
-// No shipped palette has a picture, so the recording shows the egg as one.
-const EGG_CELL = "13912-a113a7c7-2c86-4a23-815c-82c09a484e13";
+// No shipped palette has a picture, so the recording shows these home board folders as pictures. They sit
+// side by side, so one highlight box covers just them.
+const PICTURES: Record<string, string> = {
+  "SVG:12870:SVG-4b3c725a-a3af-48f6-883f-db606886e360": "body.svg",
+  "SVG:14377:SVG-9dca58ec-6c54-42c9-a514-2a18a8355df8": "food.svg",
+  "drink-973b5970-25c7-402d-bbd0-ce60298025c7": "drink.svg"
+};
 
-/** Show the food palette's egg as a picture, for this recording only. */
+/** Show the home board's body, food and drink folders as pictures, for this recording only. */
 export async function prepare (context: BrowserContext): Promise<void> {
-  await context.route("**/palettes/food.json", async (route) => {
+  await context.route("**/palettes/bliss_standard_chart.json", async (route) => {
     const response = await route.fetch();
     const palette = await response.json() as { cells: Record<string, { options: Record<string, unknown> }> };
-    const egg = palette.cells[EGG_CELL].options;
-    delete egg.composition;
-    egg.picture = "../pictures/egg.svg";
+    for (const [id, file] of Object.entries(PICTURES)) {
+      const options = palette.cells[id].options;
+      delete options.composition;
+      options.picture = `../pictures/${file}`;
+    }
     await route.fulfill({ response, json: palette });
   });
-  await context.route("**/pictures/egg.svg", (route) =>
-    route.fulfill({ path: path.join(import.meta.dirname, "egg.svg"), contentType: "image/svg+xml" })
-  );
+  await context.route("**/pictures/*.svg", (route) => route.fulfill({
+    path: path.join(import.meta.dirname, path.basename(new URL(route.request().url()).pathname)),
+    contentType: "image/svg+xml"
+  }));
 }
 
 export const steps: Step[] = [
@@ -38,11 +46,11 @@ export const steps: Step[] = [
     },
     highlight: ".sentenceLayer"
   },
-  { id: "privacy", highlight: ".sentenceLayer" },
   {
-    // Start the tour as someone opening the app for the first time sees it. The preview saved its
-    // message, which would show up as a word suggestion.
-    id: "welcome",
+    // Under the title card, start the app again as someone opening it for the first time sees it. The
+    // preview saved its message, which would show up as a word suggestion.
+    id: "privacy",
+    title: "Your messages stay private",
     action: async (page) => {
       await page.evaluate(async () => {
         for (const { name } of await indexedDB.databases()) {
@@ -53,11 +61,12 @@ export const steps: Step[] = [
       });
       await page.reload();
       await page.locator(".screenPalette").waitFor();
-      await installOverlay(page);
     }
   },
+  { id: "welcome" },
   { id: "input-area", highlight: MESSAGE },
   { id: "symbol-grid", highlight: ".screenPalette > .actionBranchToPaletteCell" },
+  { id: "customize", highlight: Object.keys(PICTURES).map((id) => `[id="${id}"]`).join(", ") },
   {
     id: "open-food",
     chapter: "Building a message",
@@ -71,7 +80,6 @@ export const steps: Step[] = [
     },
     highlight: MESSAGE
   },
-  { id: "pictures", highlight: `[id="${EGG_CELL}"]` },
   { id: "word-predictions", highlight: "#predicted-words" },
   { id: "command-bar", highlight: "[data-palettename=\"Command Bar\"]" },
   { id: "go-back", action: (page) => click(page, "#command-go-back"), highlight: "#command-go-back" },
