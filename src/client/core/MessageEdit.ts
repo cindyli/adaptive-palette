@@ -21,14 +21,15 @@
  * This lives in `core/` rather than in the feature that vetoes edits, so that no cell imports
  * a feature.
  */
-import { changeEncodingContents } from "../state/GlobalData";
-import type { ContentSignalDataType } from "../index.d";
+import { changeEncodingContents, wordBuildSignal } from "../state/GlobalData";
+import { insertWordAtCaret } from "../utils/SymbolEncodingUtils";
+import type { ContentSignalDataType, SymbolEncodingType } from "../index.d";
 
 /**
  * Decides whether an edit may be published. Returning `true` holds it: the guard has taken
- * the edit on and will either apply it later or drop it.
+ * the edit on and will either apply it later, then call `afterApply`, or drop both.
  */
-export type EditGuard = (next: ContentSignalDataType) => boolean;
+export type EditGuard = (next: ContentSignalDataType, afterApply?: () => void) => boolean;
 
 /**
  * The guard consulted before every edit, if one is registered.
@@ -74,15 +75,31 @@ function deepFreeze (contents: ContentSignalDataType): void {
 /**
  * Publish a change to the message being composed, unless the registered guard holds it.
  * @param {ContentSignalDataType} next - The message as it would be after the edit.
+ * @param {Function} afterApply - Optional. Called once the edit is published, now or when the
+ *                                guard applies a held edit. Not called for an edit that is dropped.
  * @returns {boolean} - `true` when the edit was published, `false` when the guard held it.
  */
-export function editMessage (next: ContentSignalDataType): boolean {
+export function editMessage (next: ContentSignalDataType, afterApply?: () => void): boolean {
   // Frozen before the guard is asked, so an edit the guard holds is already safe from later
   // in-place changes by the time the guard applies it.
   deepFreeze(next);
-  if (guard?.(next)) {
+  if (guard?.(next, afterApply)) {
     return false;
   }
   changeEncodingContents.value = next;
+  afterApply?.();
   return true;
+}
+
+/**
+ * Add a word after the caret, with a space before it inside a new word's combine markers. Every
+ * cell that adds a word adds it this way.
+ * @param {SymbolEncodingType} word - The word to add.
+ * @param {Function} afterApply     - Optional. As for `editMessage()`.
+ * @returns {boolean} - As for `editMessage()`.
+ */
+export function insertWord (word: SymbolEncodingType, afterApply?: () => void): boolean {
+  const { payloads, caretPosition } = changeEncodingContents.value;
+  const spaced = wordBuildSignal.value?.combine ?? false;
+  return editMessage(insertWordAtCaret(word, payloads, caretPosition, spaced), afterApply);
 }

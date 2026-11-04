@@ -24,23 +24,29 @@ const indicatorIds = {
   list: [902, 903, 928, 992, 6436, 6439]  // bciAvId 24665, 28043, 24807, 25458, 16436, 16439
 };
 
+// Indicators that carry meaning rather than grammar, kept on the parts of a word (§7.0).
+export const SEMANTIC_INDICATORS = [97, 6436]; // thing, abstract
+
 // Lists of modifier symbols
 // Note: These may be relevant to strategies since there is some overlap, e.g.,
 // Semantic and Grammatical strategies.
 const modifierIds = {
-  // much, intensity, without, opposite, generalization, part of, ago, now, future, same
-  semantic: [368, 401, 449, 486, 348, 502, 112, 474, 648, 578],
+  // group of, intensity, without, opposite, generalization, part of, ago, now, future, same as, not
+  semantic: [368, 401, 449, 486, 348, 502, 112, 474, 648, 578, 2088],
   // more, most, belongs to
   grammatical: [937, 968, 160],
-  // similar, similar looking, similar sound
+  // similar to, looks like, sounds like
   conceptTransforming: [2404, 2405, 2406],
   // range of the index numerals from 0 through 9. NOTE THIS IS A RANGE.
   numericRange: [19, 28],
   // metaphor, Blissname, slang, coarse slang
   signalling: [444, 753, 970, 971],
-  // similar feeling, similar smell, similar taste: modifiers made of more than one symbol
+  // feels like, smells like, tastes like: modifiers made of more than one symbol
   multiSymbol: [[2404, "/", 374], [2404, "/", 473], [2404, "/", 642]]
 };
+
+// The combine marker: one at each end of a word the user invented (§6.5.4.5).
+export const COMBINE_MARKER_ID = 233;
 
 /**
  * Parses a Blissary SVG builder string into a composition array.
@@ -187,6 +193,28 @@ export function findIndicators (id: SymbolCompositionType): number[] {
   return positions;
 }
 
+/**
+ * The positions of a word's own indicators, the ones a new indicator replaces: those on its
+ * classifier, or else its grammatical ones. A thing or abstract indicator off the classifier
+ * belongs to a word the whole is made of, as in a new word, and stays.
+ * @param {SymbolCompositionType} composition - The word's composition.
+ * @return {number[]} - The positions, or an empty array when the indicator goes on the classifier.
+ */
+export function findWordIndicators (composition: SymbolCompositionType): number[] {
+  const positions = findIndicators(composition);
+  if (!Array.isArray(composition)) {
+    return positions;
+  }
+  const onClassifier: number[] = [];
+  for (let index = findClassifierFromLeft(composition) + 1;
+    (composition[index] === ";" || composition[index] === ";;") && positions.includes(index + 1); index += 2) {
+    onClassifier.push(index + 1);
+  }
+  return onClassifier.length > 0
+    ? onClassifier
+    : positions.filter((position) => !SEMANTIC_INDICATORS.includes(composition[position] as number));
+}
+
 /*
  * Evaluate if the given integer matches the ID of one of the
  * modifier symbols.
@@ -208,6 +236,7 @@ export function isModifier (id: number): boolean {
  * should be a classifier symbol.  If the single number form of a SymbolCompositionType is
  * provided, then 0 (zero) is returned.  If the entire sequence of symbols has
  * been processed, and none are left, then 0 (zero) is returned.
+ * A combine marker at the start is passed over like a prefix modifier.
  * @param {SymbolCompositionType} id - The array form of a SymbolCompositionType is a mixture
  *                           of integers and strings.
  * @return {number} - the index of the symbol just after the last modifier.
@@ -228,7 +257,7 @@ export function findClassifierFromLeft (id: SymbolCompositionType): number {
         index += sequence.length - 1;
       }
       else if (typeof item === "number") {
-        if (isModifier(item)) {
+        if (isModifier(item) || item === COMBINE_MARKER_ID) {
           rightMost = index + 2;
         }
         else {
@@ -331,12 +360,15 @@ function getSvgBuilderOptions (composition: SymbolCompositionType): BlissOptions
  * @param {SymbolCompositionType} id - A ID (a number) or an array of
  *                           IDs and separators, e.g.
  *                           `[ 106, "/", 12 ]`
+ * @param {String} color   - Optional. The colour of the strokes and letters, as a CSS colour.
+ *                           The builder draws them black by default.
  * @return {BlissSVGBuilder} - The corresponding builder.
  */
-function getSvgBuilder (composition: SymbolCompositionType): BlissSVGBuilder {
+function getSvgBuilder (composition: SymbolCompositionType, color?: string): BlissSVGBuilder {
   let builder: BlissSVGBuilder;
+  const options = color === undefined ? getSvgBuilderOptions(composition) : { ...getSvgBuilderOptions(composition), color };
   try {
-    builder = new BlissSVGBuilder(compositionToBstr(composition), getSvgBuilderOptions(composition));
+    builder = new BlissSVGBuilder(compositionToBstr(composition), options);
   } catch (err) {
     console.error(err);
     console.error(`Unknown composition = ${String(composition)}`);
@@ -369,8 +401,9 @@ export function getSvgMarkupString (composition: SymbolCompositionType): string 
  * @param {SymbolCompositionType} composition - A ID (a number) or an array of
  *                           IDs and separators, e.g.
  *                           `[ 106, "/", 12 ]`
+ * @param {String} color   - Optional. The colour of the strokes and letters, as a CSS colour.
  * @return {Element} - The corresponding SVG markup.
  */
-export function getSvgElement (composition: SymbolCompositionType): SVGElement {
-  return getSvgBuilder(composition).svgElement;
+export function getSvgElement (composition: SymbolCompositionType, color?: string): SVGElement {
+  return getSvgBuilder(composition, color).svgElement;
 }

@@ -13,16 +13,17 @@
 /**
  * Read and validate `public/config.json`.
  *
- * This module imports nothing but types and the leaf `I18n` module.  Keeping it a leaf is
- * deliberate: it is what lets `GlobalData` hold the parsed config without acquiring a
- * dependency that points back at it.
+ * This module imports nothing but types and the leaf `I18n` and `PaletteStore` modules.
+ * Keeping it a leaf is deliberate: it is what lets `GlobalData` hold the parsed config without
+ * acquiring a dependency that points back at it.
  */
 import type {
   AdaptivePaletteConfigType, IndicatorLabelLookupConfigType,
   TelegraphicTranslationConfigType, FeatureVisibilityConfigType, WordPredictionConfigType,
-  AboutMeConfigType, SwitchScanningConfigType, PromptType
+  AboutMeConfigType, WordNamingConfigType, SwitchScanningConfigType, PromptType
 } from "../index.d";
 import { parseLanguage } from "../i18n/I18n";
+import { DEFAULT_PALETTE_SET, isPaletteSetName } from "./PaletteStore";
 
 // Used when `maxRecalledRecords` or `wordPrediction.numSuggestions` is missing or malformed.
 // 500 is a working-set size, not a storage limit: reading further back costs time on every
@@ -77,6 +78,7 @@ const isKeyCode = (value: unknown): boolean => typeof value === "string" && /^[A
 export function makeDefaultConfig (): AdaptivePaletteConfigType {
   return {
     language: "en",
+    paletteSet: DEFAULT_PALETTE_SET,
     maxRecalledRecords: DEFAULT_MAX_RECALLED_RECORDS,
     announceSymbolOnInput: true,
     markAiSuggestions: true,
@@ -153,29 +155,41 @@ function parseTelegraphicTranslation (section: unknown): TelegraphicTranslationC
 }
 
 /**
+ * Validate a section that asks a model with prompts of its own: `wordNaming`, which configures
+ * the names the model offers in the dialog that names a new word, and the base of `aboutMe`.
+ * Both prompts are required because there are no hardcoded fallback prompts. A missing or
+ * malformed section returns `undefined`, which turns the feature off.
+ * @param {unknown} section - The raw parsed section.
+ * @returns {WordNamingConfigType | undefined}
+ */
+function parseModelPrompts (section: unknown): WordNamingConfigType | undefined {
+  const candidate = section as { model?: unknown, systemPrompt?: unknown, userPrompt?: unknown } | undefined;
+  if (!candidate) {
+    return undefined;
+  }
+  const { model, systemPrompt, userPrompt } = candidate;
+  // An empty `model` is valid and means the first model Ollama reports.
+  if (typeof model !== "string" || !isPrompt(systemPrompt) || !isPrompt(userPrompt)) {
+    return undefined;
+  }
+  return { model, systemPrompt, userPrompt };
+}
+
+/**
  * Validate the `aboutMe` section, which configures "Suggest updates" in the About Me
- * dialog. Both prompts are required because there are no hardcoded fallback prompts. A
- * missing or malformed section returns `undefined`, which hides the button. A bad
+ * dialog. A missing or malformed section returns `undefined`, which hides the button. A bad
  * `messagesPerRun` falls back to the default and keeps the rest of the section.
  * @param {unknown} section - The raw parsed section.
  * @returns {AboutMeConfigType | undefined}
  */
 function parseAboutMe (section: unknown): AboutMeConfigType | undefined {
-  const candidate = section as {
-    model?: unknown, systemPrompt?: unknown, userPrompt?: unknown, messagesPerRun?: unknown
-  } | undefined;
-  if (!candidate) {
+  const base = parseModelPrompts(section);
+  if (!base) {
     return undefined;
   }
-  const { model, systemPrompt, userPrompt, messagesPerRun } = candidate;
-  // An empty `model` is valid and means the first model Ollama reports.
-  if (typeof model !== "string" || !isPrompt(systemPrompt) || !isPrompt(userPrompt)) {
-    return undefined;
-  }
+  const { messagesPerRun } = section as { messagesPerRun?: unknown };
   return {
-    model,
-    systemPrompt: systemPrompt,
-    userPrompt: userPrompt,
+    ...base,
     messagesPerRun: isPositiveInteger(messagesPerRun) ? messagesPerRun as number : DEFAULT_MESSAGES_PER_RUN
   };
 }
@@ -271,9 +285,9 @@ function parseSwitchScanning (section: unknown): SwitchScanningConfigType {
 }
 
 /**
- * Fetch and validate `public/config.json`: the top-level `language` and `maxRecalledRecords`, and the
- * `indicatorLabelLookup`, `telegraphicTranslation`, `symbolSearch`, `svgBuilderString`,
- * `wordPrediction`, `aboutMe` and `switchScanning` sections.
+ * Fetch and validate `public/config.json`: the top-level `language`, `paletteSet` and
+ * `maxRecalledRecords`, and the `indicatorLabelLookup`, `telegraphicTranslation`, `symbolSearch`, `svgBuilderString`,
+ * `wordPrediction`, `aboutMe`, `wordNaming` and `switchScanning` sections.
  * @returns {Promise<AdaptivePaletteConfigType>}
  */
 export async function loadConfig (): Promise<AdaptivePaletteConfigType> {
@@ -286,6 +300,7 @@ export async function loadConfig (): Promise<AdaptivePaletteConfigType> {
     const indicatorLabelLookup = parseIndicatorLabelLookup(parsed?.indicatorLabelLookup);
     return {
       language: parseLanguage(parsed?.language) ?? "en",
+      paletteSet: isPaletteSetName(parsed?.paletteSet) ? parsed.paletteSet : DEFAULT_PALETTE_SET,
       maxRecalledRecords: parseMaxRecalledRecords(parsed?.maxRecalledRecords),
       // Anything other than `false` leaves announcements on: a mistyped config must not
       // silently mute the palette.
@@ -299,6 +314,7 @@ export async function loadConfig (): Promise<AdaptivePaletteConfigType> {
       indicatorLabelLookup: indicatorLabelLookup ?? makeDefaultConfig().indicatorLabelLookup,
       telegraphicTranslation: parseTelegraphicTranslation(parsed?.telegraphicTranslation),
       aboutMe: parseAboutMe(parsed?.aboutMe),
+      wordNaming: parseModelPrompts(parsed?.wordNaming),
       symbolSearch: parseShowFlag(parsed?.symbolSearch, true),
       svgBuilderString: parseShowFlag(parsed?.svgBuilderString, false),
       wordPrediction: parseWordPrediction(parsed?.wordPrediction)

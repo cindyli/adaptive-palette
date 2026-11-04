@@ -14,3 +14,8 @@ dist-desktop
 
 # Recorded feature videos
 videos/output
+
+# Only the shipped palette sets are tracked: an imported one holds personal data. A new set to ship
+# needs a line of its own here. See docs/devDoc/Grid3Mapping.md.
+public/palette-sets/*
+!public/palette-sets/standardBlissChart/

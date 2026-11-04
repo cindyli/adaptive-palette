@@ -188,6 +188,27 @@ describe("loadConfig maxRecalledRecords", (): void => {
   });
 });
 
+describe("loadConfig paletteSet", (): void => {
+
+  test("a set name is loaded as given", async (): Promise<void> => {
+    stubConfigFetch({ indicatorLabelLookup: INDICATOR_SECTION, paletteSet: "userBlissChart" });
+    const config = await loadConfig();
+    expect(config.paletteSet).toBe("userBlissChart");
+  });
+
+  test("a missing or invalid value falls back to standardBlissChart", async (): Promise<void> => {
+    for (const paletteSet of [undefined, "", "../x", 7]) {
+      stubConfigFetch({ indicatorLabelLookup: INDICATOR_SECTION, paletteSet });
+      const config = await loadConfig();
+      expect(config.paletteSet, String(paletteSet)).toBe("standardBlissChart");
+    }
+  });
+
+  test("the default config opens standardBlissChart", (): void => {
+    expect(makeDefaultConfig().paletteSet).toBe("standardBlissChart");
+  });
+});
+
 describe("loadConfig wordPrediction section", (): void => {
 
   test("a numSuggestions above the maximum is lowered to it", async (): Promise<void> => {
@@ -444,8 +465,30 @@ describe("loadConfig with the shipped config.json", (): void => {
       expect(promptsFor(config.telegraphicTranslation, language)).toBeDefined();
       expect(promptsFor(config.wordPrediction, language)).toBeDefined();
       expect(promptsFor(config.aboutMe, language)).toBeDefined();
+      expect(promptsFor(config.wordNaming, language)).toBeDefined();
       expect(promptsFor(config.indicatorLabelLookup, language)).toBeDefined();
     }
+  });
+});
+
+describe("loadConfig wordNaming section", (): void => {
+
+  const WORD_NAMING_SECTION = {
+    model: "phony-model:12b",
+    systemPrompt: "Name the word.",
+    userPrompt: "Parts: {{parts}}"
+  };
+
+  test("a valid section is loaded as given", async (): Promise<void> => {
+    stubConfigFetch({ indicatorLabelLookup: INDICATOR_SECTION, wordNaming: WORD_NAMING_SECTION });
+    expect((await loadConfig()).wordNaming).toEqual(WORD_NAMING_SECTION);
+  });
+
+  test("a missing section, or one with an empty prompt, leaves name suggestions off", async (): Promise<void> => {
+    stubConfigFetch({ indicatorLabelLookup: INDICATOR_SECTION });
+    expect((await loadConfig()).wordNaming).toBeUndefined();
+    stubConfigFetch({ indicatorLabelLookup: INDICATOR_SECTION, wordNaming: { ...WORD_NAMING_SECTION, userPrompt: " " } });
+    expect((await loadConfig()).wordNaming).toBeUndefined();
   });
 });
 

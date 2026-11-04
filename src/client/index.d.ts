@@ -57,6 +57,10 @@ export type LayoutInfoType = {
   // When true, and the palette holding the cell is included by the screen palette, the screen
   // draws the cell over every row below that include, across all columns. See `Palette.ts`.
   layer?: boolean,
+  // `true`: the cell is shown only while a word is being built with Compose new word. `false`: only while
+  // none is. Absent: always. Two cells may share a grid position when one is `true` and the other
+  // `false`.
+  buildingWord?: boolean,
   // The language of the cell's `label`. Set by `Palette.ts` when it picks the label; not
   // written in the palette JSON.
   labelLanguage?: Language,
@@ -69,10 +73,19 @@ export type BranchToInfoType = {
   branchTo: string,
   ariaControls?: string,
   // The palette edits the symbol at the caret, so the button is unavailable without one.
-  needsCaretSymbol?: boolean
+  needsCaretSymbol?: boolean,
+  // The palette cannot change a word being built, so the button is unavailable meanwhile.
+  unavailableWhileBuildingWord?: boolean
 };
 
-export type BlissSymbolCellType = LayoutInfoType & BranchToInfoType & PictureOrSymbolInfoType;
+// `backgroundColor` and `textColor` are CSS colours for the cell's background, and for its label
+// and Bliss symbol.
+export type CellColorsType = {
+  backgroundColor?: string,
+  textColor?: string
+};
+
+export type BlissSymbolCellType = LayoutInfoType & BranchToInfoType & PictureOrSymbolInfoType & CellColorsType;
 
 export type JsonPaletteType = {
   name: string,
@@ -139,7 +152,11 @@ export type SymbolEncodingType = PictureOrSymbolInfoType & {
   // True when the label came from the indicator-label model query rather than the
   // pregenerated table. Cleared whenever the label stops being the model's; absent
   // and `false` mean the same thing, so test it for truthiness, not against `false`.
-  isAiLabel?: boolean
+  isAiLabel?: boolean,
+  // A space between two words inside a new word's combine markers. It has no symbol.
+  isSpace?: boolean,
+  // A word built with Compose new word. Only such a word can be saved to a palette.
+  isComposedWord?: boolean
 }
 
 // A prompt in `config.json`: one text for every language, or one per language.
@@ -179,6 +196,13 @@ export type AboutMeConfigType = {
   messagesPerRun: number
 };
 
+// The names a model offers in the dialog that names a new word.
+export type WordNamingConfigType = {
+  model: string,
+  systemPrompt: PromptType,
+  userPrompt: PromptType
+};
+
 /*
  * Which step of the word-to-symbol ladder found a symbol for a word the model suggested, or
  * "dropped" when no step did. Counted to report how often model words go unused.
@@ -214,6 +238,9 @@ export type SwitchScanningConfigType = {
 export type AdaptivePaletteConfigType = {
   // The UI language. `?lang=` in the page URL overrides it at start-up.
   language: Language,
+  // The palette set opened when the page URL has no `?set=`. Defaults to `standardBlissChart`;
+  // the desktop packaging script sets it for a bundle made for one user.
+  paletteSet: string,
   // How many of the newest stored messages are read back for word prediction and for
   // recalling a sentence. Nothing is ever deleted; this caps what is read, not what is kept.
   // Zero turns the history off: nothing is read and nothing is written.
@@ -233,6 +260,7 @@ export type AdaptivePaletteConfigType = {
   indicatorLabelLookup: IndicatorLabelLookupConfigType,
   telegraphicTranslation?: TelegraphicTranslationConfigType,
   aboutMe?: AboutMeConfigType,
+  wordNaming?: WordNamingConfigType,
   symbolSearch: FeatureVisibilityConfigType,
   svgBuilderString: FeatureVisibilityConfigType,
   wordPrediction: WordPredictionConfigType
@@ -241,6 +269,16 @@ export type AdaptivePaletteConfigType = {
 export type ContentSignalDataType = {
   payloads: SymbolEncodingType[],
   caretPosition: number
+};
+
+/*
+ * A word being built with Compose new word. While one is, `changeEncodingContents` holds its parts, and
+ * `message` holds the message it goes into, after `message.caretPosition`.
+ */
+export type WordBuildType = {
+  message: ContentSignalDataType,
+  // Whether the combine marker is on: a marker at each end, and a space between the words.
+  combine: boolean
 };
 
 // One slot in a Bliss sentence row: the span it covers, and the symbol found for it.
@@ -364,4 +402,16 @@ export type AboutMeType = {
   pending: DismissedFactType[],
   // Absent until the first successful "Suggest updates".
   learntUpTo?: LearntUpToType
+};
+
+/*
+ * A word saved to a palette with "Save new word". `paletteSet` is the set's folder, so a palette
+ * with the same name in another set does not show it.
+ */
+export type SavedWordType = {
+  id: string,
+  paletteSet: string,
+  palette: string,
+  label: string,
+  composition: SymbolCompositionType
 };

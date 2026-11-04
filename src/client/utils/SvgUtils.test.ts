@@ -14,7 +14,7 @@ import { BlissSVGBuilder } from "bliss-svg-builder";
 import { initAdaptivePaletteGlobals } from "../core/InitGlobals";
 import {
   compositionToBstr, bstrToComposition, isIndicator,
-  findIndicators, isModifier, findClassifierFromLeft, findSymbolByBciAvId,
+  findIndicators, findWordIndicators, isModifier, findClassifierFromLeft, findSymbolByBciAvId,
   getSvgElement, getSvgMarkupString, findSymbolByGloss,
 } from "./SvgUtils";
 
@@ -120,8 +120,8 @@ describe("SvgUtils", (): void => {
     expect(isModifier(nonModifierId)).toEqual(false);
   });
 
-  test("isModifier() recognises \"same\" and the concept-transforming modifiers", (): void => {
-    // same, similar, similar looking, similar sound
+  test("isModifier() recognises \"same as\" and the concept-transforming modifiers", (): void => {
+    // same as, similar to, looks like, sounds like
     [578, 2404, 2405, 2406].forEach((id) => expect(isModifier(id), `id ${id}`).toBe(true));
   });
 
@@ -138,6 +138,16 @@ describe("SvgUtils", (): void => {
     expect(indicatorPositions.length).toEqual(0);
   });
 
+  test("findWordIndicators() finds the word's own indicators", (): void => {
+    // On the classifier, past the combine marker: the thing indicator inside stays out.
+    expect(findWordIndicators([233, "/", 428, ";", 84, "/", 428, ";", 97, "/", 148, "/", 233])).toEqual([4]);
+    // None on the classifier: a thing indicator on an inner part is not the word's.
+    expect(findWordIndicators([126, "/", 428, ";", 97, "/", 148])).toEqual([]);
+    // None on the classifier: a grammatical one elsewhere is, as in some vocabulary words.
+    expect(findWordIndicators([122, "/", 548, ";", 84])).toEqual([4]);
+    expect(findWordIndicators(singleId)).toEqual([]);
+  });
+
   test("Find first symbol after a modifier", (): void => {
     // Prefix the `expectedMixedSeparatorsComposition` with the `modifierId` modifier.
     let modifiedRevive = [modifierId, "/", ...expectedMixedSeparatorsComposition];
@@ -147,9 +157,12 @@ describe("SvgUtils", (): void => {
     modifiedRevive = [modifierId, "/", modifierId, "/", ...expectedMixedSeparatorsComposition, "/", modifierId];
     expect(findClassifierFromLeft(modifiedRevive)).toEqual(4);
 
-    // A multi-symbol modifier, "similar feeling", is skipped whole, alone or after "without".
+    // A multi-symbol modifier, "feels like", is skipped whole, alone or after "without".
     expect(findClassifierFromLeft([2404, "/", 374, "/", 382])).toEqual(4);
     expect(findClassifierFromLeft([449, "/", 2404, "/", 374, "/", 382])).toEqual(6);
+
+    // A combine marker at the start is passed over: the indicator goes on the classifier inside.
+    expect(findClassifierFromLeft([233, "/", 126, "//", 449, "/", 640, "/", 233])).toEqual(2);
 
     // The original `expectedMixedSeparatorsComposition` has no modifiers; also a single id has no modifiers.
     expect(findClassifierFromLeft(expectedMixedSeparatorsComposition)).toEqual(0);

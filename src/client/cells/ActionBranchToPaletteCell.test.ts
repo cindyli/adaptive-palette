@@ -15,7 +15,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/preact";
 import { html } from "htm/preact";
 import { initAdaptivePaletteGlobals } from "../core/InitGlobals";
 import { renderCell, expectCellRendered, testPicture } from "../testUtils/CellTestUtils";
-import { adaptivePaletteGlobals, changeEncodingContents } from "../state/GlobalData";
+import { adaptivePaletteGlobals, changeEncodingContents, wordBuildSignal } from "../state/GlobalData";
 import { ActionBranchToPaletteCell } from "./ActionBranchToPaletteCell";
 import { goBackImpl } from "./CommandGoBackCell";
 import { goToRootImpl } from "./CommandGoToRootCell";
@@ -37,6 +37,10 @@ describe("ActionBranchToPaletteCell", (): void => {
 
   beforeAll(async () => {
     await initAdaptivePaletteGlobals();
+  });
+
+  afterEach((): void => {
+    wordBuildSignal.value = null;
   });
 
   test("renders at its grid position", async (): Promise<void> => {
@@ -67,6 +71,26 @@ describe("ActionBranchToPaletteCell", (): void => {
     expect(button).toHaveAttribute("data-branchto", "Food");
   });
 
+  test("backgroundColor colours the button", async (): Promise<void> => {
+    renderCell(ActionBranchToPaletteCell, TEST_CELL_ID, { ...goToPaletteCell.options, backgroundColor: "#E86E9BFF" });
+
+    const button = await screen.findByRole("button", { name: goToPaletteCell.options.label });
+    expect(getComputedStyle(button).backgroundColor).toBe("rgb(232, 110, 155)");
+  });
+
+  test("with needsCaretSymbol, drops its own colours while unavailable", async (): Promise<void> => {
+    const options = { ...goToPaletteCell.options, needsCaretSymbol: true, backgroundColor: "#E86E9BFF" };
+    changeEncodingContents.value = { payloads: [], caretPosition: -1 };
+
+    renderCell(ActionBranchToPaletteCell, TEST_CELL_ID, options);
+    const button = await screen.findByRole("button", { name: goToPaletteCell.options.label });
+    expect(button.style.backgroundColor).toBe("");
+
+    changeEncodingContents.value = { payloads: [{ label: "opposite", composition: 486 }], caretPosition: 0 };
+    await waitFor(() => expect(button.style.backgroundColor).toBe("rgb(232, 110, 155)"));
+    changeEncodingContents.value = { payloads: [], caretPosition: -1 };
+  });
+
   test("with needsCaretSymbol, is a command that is unavailable without a symbol at the caret", async (): Promise<void> => {
     const options = { ...goToPaletteCell.options, needsCaretSymbol: true };
     changeEncodingContents.value = { payloads: [], caretPosition: -1 };
@@ -93,6 +117,22 @@ describe("ActionBranchToPaletteCell", (): void => {
 
     const button = await screen.findByRole("button", { name: options.label });
     expect(button).toHaveAttribute("aria-disabled", "true");
+    changeEncodingContents.value = { payloads: [], caretPosition: -1 };
+  });
+
+  test("flagged unavailableWhileBuildingWord is unavailable while a word is being built", async (): Promise<void> => {
+    changeEncodingContents.value = { payloads: [{ label: "cat", composition: 126 }], caretPosition: 0 };
+    wordBuildSignal.value = { message: { payloads: [], caretPosition: -1 }, combine: false };
+    renderCell(ActionBranchToPaletteCell, "command-indicators", {
+      label: "add indicator", composition: 81, branchTo: "indicators",
+      unavailableWhileBuildingWord: true, rowStart: 1, rowSpan: 1, columnStart: 1, columnSpan: 1
+    });
+
+    const button = await screen.findByRole("button", { name: "add indicator" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    // A command, so it greys out.
+    expect(button).toHaveClass("btn-command");
+
     changeEncodingContents.value = { payloads: [], caretPosition: -1 };
   });
 

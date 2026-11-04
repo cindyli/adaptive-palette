@@ -52,14 +52,20 @@ To add a palette, put its file in the set's `palettes/` folder and add it to `pa
 ### Choosing a set
 
 `?set=<folder>` in the page URL picks the set, for example `http://localhost:3000/?set=standardBlissChart`. With no
-`set`, the app loads `standardBlissChart`.
+`set`, the app loads the set `paletteSet` names in `config.json`, which defaults to `standardBlissChart`. See
+[Config.md](Config.md#paletteset).
 
 `paletteSetPath()` in `src/client/core/PaletteStore.ts` turns the name into `/palette-sets/<set>/palette_set.json`.
 It throws when the name holds anything but letters, digits, `_` and `-`. An invalid name, or a set with no folder,
 stops start-up with an error in the console.
 
 To add a set, create its folder with a `palette_set.json` and a `palettes/` folder, then open the app with
-`?set=<folder>`.
+`?set=<folder>`. To make a set from a Grid 3 grid set, see
+[Importing a grid set](Grid3Mapping.md#importing-a-grid-set).
+
+Git ignores every set but `standardBlissChart`, because an imported set holds personal data. To ship a new set, add
+a `!public/palette-sets/<set>/` line to `.gitignore`. `npm run package:desktop` leaves out the sets git does not
+track; see [Packaging the Desktop Build](Deployment.md#how-it-is-built).
 
 ### Naming a set
 
@@ -190,12 +196,16 @@ label in the standard chart has both; `scripts/draft_swedish_labels.js` drafted 
 | `columnSpan` | number | Number of grid columns the cell occupies |
 | `requiresModel` | boolean | Optional. When true the cell is left out unless a model is available |
 | `requiresConfig` | string | Optional. The `config.json` section the cell needs; the cell is left out when that section is missing |
+| `buildingWord` | boolean | Optional. true: the cell is shown only while a word is being built with Compose new word. false: only while none is. Two cells may share a position when one is true and the other false |
 | `layer` | boolean | Optional. The screen palette draws the cell over the rows below the include that holds it (see [Fitting the screen](#fitting-the-screen)) |
 
 Both flags mark a cell whose feature can be unavailable: the command bar's "Msg Style" button
 carries `requiresModel`, and the input area's "Make Sentences" button carries both. `Palette.ts`
 leaves such a cell out and collapses the grid column it would have taken, so the rest of the row
 spreads over the space instead of showing a hole.
+
+The command bar and the input area use `buildingWord` to swap the writing controls for the building ones (see
+[Compose New Words](../ComposeWords.md)).
 
 **`composition`** identifies the Bliss symbol(s) to render. It is either a
 single numeric ID -- the `id` field from `bliss_symbol_explanations.json`, not its `bciAvId` --
@@ -217,5 +227,13 @@ modifiers cannot change a picture word.
    is inside the loaded set's folder.
 3. The formats are PNG, JPEG, GIF, WebP, AVIF, SVG and BMP.
 4. A picture that cannot be loaded is hidden, and the cell shows its label only.
-5. Every set in `public/palette-sets/` is published on the public website, so its pictures must be licensed for
-   public release.
+5. Every set git tracks is published on the public website, so its pictures must be licensed for public release.
+
+**`backgroundColor`** and **`textColor`** are CSS colours, such as `"#E86E9B"`, for the cell's background and for
+its label and Bliss symbol. Only `ActionCodeCell` and `ActionBranchToPaletteCell` read them. `PaletteStore` drops a
+value that is not a colour when it loads the palette, and logs an error, so a palette cannot add other styles
+through it. A branch cell that is unavailable (`needsCaretSymbol`) shows the command colours instead. Palettes
+imported from Grid 3 use them (see [Mapping Grid 3 Grid Sets](Grid3Mapping.md#what-each-cell-becomes)).
+
+**`branchTo`** on an `ActionCodeCell` names a palette to go to after the cell adds its word to the message. It takes
+the same palette names as an `ActionBranchToPaletteCell`'s `branchTo`, and the cell has the same folded corner.

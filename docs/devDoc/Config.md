@@ -20,6 +20,7 @@ whatever this file says. See `isLocalHost()` in [`src/client/core/OllamaApi.ts`]
 | Section | Controls |
 | ------- | -------- |
 | `language` | Top-level, not a section. The UI language: `"en"` or `"sv"`. |
+| `paletteSet` | Top-level, not a section. The palette set opened when the page URL has no `?set=`. |
 | `maxRecalledRecords` | Top-level, not a section. How many of the newest stored messages the app reads back for word prediction and sentence recall. |
 | `announceSymbolOnInput` | Top-level, not a section. Whether labels are spoken as the user inputs. |
 | `markAiSuggestions` | Top-level, not a section. Whether suggestions a model made are marked as such. |
@@ -28,6 +29,7 @@ whatever this file says. See `isLocalHost()` in [`src/client/core/OllamaApi.ts`]
 | `indicatorLabelLookup` | The Ollama fallback tier for looking up indicator labels. See [IndicatorLabelLookup.md](../IndicatorLabelLookup.md). |
 | `telegraphicTranslation` | Translating a telegraphic message into full sentences. See [TelegraphicMessageTranslation.md](../TelegraphicMessageTranslation.md). |
 | `aboutMe` | The "Suggest updates" button in the "About Me" dialog, which asks a model for facts about the user. See [AboutMe.md](../AboutMe.md). |
+| `wordNaming` | The model names offered in the dialog that names a new word. See [ComposeWords.md](../ComposeWords.md). |
 | `symbolSearch` | The "Add Symbol to Message" trigger and its gloss-search dialog. |
 | `svgBuilderString` | The "Add Symbol by SVG-Builder String" trigger and its dialog. Off in production: it is for development. |
 | `wordPrediction` | Suggesting the next word from the user's past messages, and optionally from a model. See [WordPrediction.md](../WordPrediction.md). |
@@ -58,6 +60,13 @@ unsupported value falls back to `"en"`. The user's choice in the settings dialog
 and `?lang=` in the page URL overrides both for that page, without changing `config.language`
 or the saved choice. All three are read through
 `parseLanguage()` in [`src/client/i18n/I18n.ts`](../../src/client/i18n/I18n.ts).
+
+## `paletteSet`
+
+The palette set the app opens when the page URL has no `?set=`: a folder name under
+`public/palette-sets/`. A missing or invalid value falls back to `"standardBlissChart"`.
+`public/config.json` leaves it out. Packaging with `INCLUDE_SETS` writes it into a bundle made
+for one user. See [Packaging the Desktop Build](Deployment.md#how-it-is-built).
 
 ## `maxRecalledRecords`
 
@@ -182,6 +191,21 @@ is skipped however long the user waits between runs.
 
 The button is also hidden away from `localhost`, whatever this section says, since there is no model
 to ask.
+
+## `wordNaming`
+
+Configures the names a model offers in the dialog that names a new word, asked for as the dialog
+opens. Without the section, no names are asked for, and the word is named by hand or with the
+parts' names.
+
+No names are asked for away from `localhost`, or when Ollama has no model installed, whatever this
+section says, since there is no model to ask.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `model` | string | Ollama model name. The empty string means Ollama's first available model. |
+| `systemPrompt` | string or object | Non-empty. Supports `{{numNames}}`, the number of names to ask for (3). |
+| `userPrompt` | string or object | Non-empty. Supports `{{parts}}`, the labels of the word's words joined with " + ". |
 
 ## `wordPrediction`
 
