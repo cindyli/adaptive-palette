@@ -76,12 +76,15 @@ Watch the video and check that:
 2. Each step has an `id`; `narration.<lang>.json` has the text for every id.
 3. Give the first step `title: true` to show its narration as a title card, for at least 3 seconds. Give
    `title` text to show that text on the card in place of the narration, which is still spoken. A title step
-   mid-video works as a slide between parts.
-4. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
+   mid-video works as a slide between parts. An action under a title card must not open a dialog, because a
+   dialog draws above the card.
+4. Give the last step `credits: true` to show the funder credits, `assets/credits.<lang>.html`, on a white card
+   for at least 3 seconds. The narration is still spoken.
+5. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
    10 seconds long; the runner warns when they are not.
-5. List every model that `public/config.json` asks for in `stubs.json` `models`, or the first-run setup
+6. List every model that `public/config.json` asks for in `stubs.json` `models`, or the first-run setup
    dialog covers the screen. The runner fails if the app asks Ollama for something with no stub.
-6. To show something no shipped palette has, export `prepare(context)` from `steps.ts` and route the
+7. To show something no shipped palette has, export `prepare(context)` from `steps.ts` and route the
    palette file to a changed copy there. `scripts/welcome/` does this to show pictures.
 
 When writing the steps:
@@ -92,11 +95,16 @@ When writing the steps:
    as privacy, use a title card with short text.
 3. Keep title card text short. The runner removes a trailing period.
 4. The runner handles the look: a magenta outline with the rest dimmed, a box that glides between areas,
-   and a pointer for each click. A click hides the highlight, and a highlight hides the pointer.
+   and a pointer for each click, held for a second after it. A click hides the highlight, and a highlight hides
+   the pointer.
+5. To set app state the screen cannot reach, import the app's module in `page.evaluate` by its dev server
+   path, such as `/src/client/features/about-me/AboutMeState.ts`. That gives the app's own copy.
+   `scripts/welcome/` does this to fill About Me and to show modifier AI.
 
 ## Add a language
 
 1. Add a Kokoro voice and its pronunciation language to `VOICES` in `lib/Narrate.ts`. The voices are
-   listed at <https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md>.
-2. Add `narration.<lang>.json` and `description.<lang>.txt` to each video.
+   listed at <https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md>. Put any word the voice says
+   wrong in its `sayAs`, respelt; the captions keep the written word.
+2. Add `narration.<lang>.json` and `description.<lang>.txt` to each video, and `assets/credits.<lang>.html`.
 3. Record with `--lang <lang>`.

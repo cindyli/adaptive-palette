@@ -2,12 +2,24 @@
   "models": ["gemma4:12b"],
   "chat": [
     {
+      "match": "Message so far: dog\\n",
+      "reply": "walk\npark\nplay\nball\nfood"
+    },
+    {
       "match": "predict the next word",
-      "reply": "milk\njuice\nbutter\njam\ntea"
+      "reply": ""
+    },
+    {
+      "match": "Feeling: happy",
+      "reply": "1. I'm so happy to take Rex for a walk!\n2. Yay, Rex and I are going for a walk!"
     },
     {
       "match": "communication assistant",
-      "reply": "1. I would like bread and a cookie.\n2. Can I have bread and a cookie, please?"
+      "reply": "1. I'm taking Rex for a walk.\n2. Can I take Rex for a walk?"
+    },
+    {
+      "match": "You name new words",
+      "reply": "dog walker\nwalker of dogs\ndog helper"
     }
   ]
 }

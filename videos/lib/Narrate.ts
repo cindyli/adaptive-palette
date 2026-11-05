@@ -18,9 +18,10 @@ const SCRIPT = path.join(import.meta.dirname, "kokoro.py");
 /**
  * The Kokoro voice and pronunciation language for each narration language. A fixed voice keeps
  * recordings the same. Voices are listed at https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md.
+ * `sayAs` respells words the voice says wrong. Only the speech changes: captions keep the written word.
  */
-export const VOICES: Record<string, { voice: string, lang: string }> = {
-  en: { voice: "af_heart", lang: "en-us" }
+export const VOICES: Record<string, { voice: string, lang: string, sayAs?: Record<string, string> }> = {
+  en: { voice: "af_heart", lang: "en-us", sayAs: { OCAD: "Oh-cad" } }
 };
 /** Seconds of silence after each sentence, so ideas stay apart. */
 const SENTENCE_PAUSE = "0.6";
@@ -40,7 +41,9 @@ export async function narrate (text: string, lang: string, outFile: string): Pro
   if (!existsSync(PYTHON)) {
     throw new Error(`Kokoro is not installed in ${KOKORO_DIR}. See "Requirements" in videos/README.md.`);
   }
-  await run(PYTHON, ["-I", SCRIPT, KOKORO_DIR, voice.voice, voice.lang, SENTENCE_PAUSE, outFile, text]);
+  const spoken = Object.entries(voice.sayAs ?? {})
+    .reduce((said, [word, respelt]) => said.replaceAll(word, respelt), text);
+  await run(PYTHON, ["-I", SCRIPT, KOKORO_DIR, voice.voice, voice.lang, SENTENCE_PAUSE, outFile, spoken]);
   const { stdout } = await run("ffprobe", [
     "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", outFile
   ]);

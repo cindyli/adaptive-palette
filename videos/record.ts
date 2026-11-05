@@ -17,7 +17,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { type BrowserContext, chromium, type Page } from "playwright";
 import { createServer } from "vite";
-import { clearOverlay, highlight, installOverlay, showTitle } from "./lib/Highlight.ts";
+import { clearOverlay, highlight, installOverlay, showCard, showTitle } from "./lib/Highlight.ts";
 import { narrate } from "./lib/Narrate.ts";
 import { type StubFile, installStubs } from "./lib/Stubs.ts";
 import { type TimedStep, chapterWarnings, toChapters, toVtt } from "./lib/Timeline.ts";
@@ -35,6 +35,9 @@ export interface Step {
   /** Show a title card covering the screen, for at least `TITLE_SECONDS`: this text, or the narration when
    * `true`. The narration is still spoken. Also works mid-video, as a slide between parts. */
   title?: boolean | string;
+  /** Cover the screen with the funder credits, `videos/assets/credits.<lang>.html`, for at least
+   * `TITLE_SECONDS`. The narration is still spoken. */
+  credits?: boolean;
 }
 
 /** What a script's `steps.ts` exports. */
@@ -53,9 +56,9 @@ const PORT = 3100;
 // to `OUTPUT_SIZE`, since Playwright records CSS pixels and ignores `deviceScaleFactor`.
 const SIZE = { width: 1280, height: 720 };
 const OUTPUT_SIZE = "1920:1080";
-const PAUSE_SECONDS = 1;
+const PAUSE_SECONDS = 1.5;
 // A longer pause before a new chapter marks the change of topic.
-const CHAPTER_PAUSE_SECONDS = 2;
+const CHAPTER_PAUSE_SECONDS = 2.5;
 const TITLE_SECONDS = 3;
 const TOOLS: Record<string, string> = {
   say: "`say` comes with macOS; record on a Mac.",
@@ -120,9 +123,20 @@ async function loadDescription (scriptDir: string, lang: string, chapters: strin
   return template.replace("{{chapters}}\n", chapters).replace("{{chapters}}", chapters);
 }
 
+/** The funder credits for a `credits` step, from `videos/assets/credits.<lang>.html`. */
+async function loadCredits (lang: string): Promise<string> {
+  const file = path.join(VIDEOS, "assets", `credits.${lang}.html`);
+  try {
+    return await readFile(file, "utf8");
+  } catch {
+    throw new Error(`No credits file for "${lang}": ${path.relative(ROOT, file)}`);
+  }
+}
+
 /** Drive the app through the steps. Returns the video file, the timed steps and the video's length. */
 async function recordSteps (
-  { steps, prepare }: Script, durations: number[], narration: Record<string, string>, stubs: StubFile, workDir: string
+  { steps, prepare }: Script, durations: number[], narration: Record<string, string>, credits: string,
+  stubs: StubFile, workDir: string
 ): Promise<{ video: string; timed: TimedStep[]; offset: number; total: number }> {
   const server = await createServer({
     root: ROOT, logLevel: "error", server: { port: PORT, strictPort: true }
@@ -148,9 +162,12 @@ async function recordSteps (
       const start = elapsed();
       timed.push({ id: step.id, chapter: step.chapter, text: narration[step.id], start, duration: durations[index] });
       try {
-        await clearOverlay(page);
+        await clearOverlay(page, Boolean(step.title || step.credits));
         if (step.title) {
           await showTitle(page, typeof step.title === "string" ? step.title : narration[step.id]);
+        }
+        if (step.credits) {
+          await showCard(page, credits);
         }
         await step.action?.(page);
         await highlight(page, step.highlight);
@@ -158,7 +175,8 @@ async function recordSteps (
         throw new Error(`Step "${step.id}": ${(error as Error).message}`, { cause: error });
       }
       const pause = steps[index + 1]?.chapter ? CHAPTER_PAUSE_SECONDS : PAUSE_SECONDS;
-      const holdUntil = start + Math.max(durations[index], step.title ? TITLE_SECONDS : 0) + pause;
+      const card = step.title || step.credits;
+      const holdUntil = start + Math.max(durations[index], card ? TITLE_SECONDS : 0) + pause;
       await page.waitForTimeout(Math.max(0, holdUntil - elapsed()) * 1000);
     }
     const total = elapsed();
@@ -220,6 +238,7 @@ async function main (): Promise<void> {
   const script = await import(path.join(scriptDir, "steps.ts")) as Script;
   const { steps } = script;
   const narration = await loadNarration(scriptDir, lang, steps);
+  const credits = steps.some((step) => step.credits) ? await loadCredits(lang) : "";
   const stubs = await readJson<StubFile>(path.join(scriptDir, "stubs.json"));
 
   const workDir = await mkdtemp(path.join(tmpdir(), `video-${name}-`));
@@ -232,7 +251,7 @@ async function main (): Promise<void> {
     }
 
     console.log("2. Recording");
-    const { video, timed, offset, total } = await recordSteps(script, durations, narration, stubs, workDir);
+    const { video, timed, offset, total } = await recordSteps(script, durations, narration, credits, stubs, workDir);
 
     console.log("3. Combining video and narration");
     const base = `${name}.${lang}`;

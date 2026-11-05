@@ -1,14 +1,12 @@
-A short tour of Adaptive Palette, a Bliss symbol communication board that explores how AI can help people who use AAC communicate. Its AI suggests words, builds full sentences, and learns what matters to you.
+A short overview of Adaptive Palette, a communication board that uses Bliss symbols, pictures, or both. Its AI adapts the board to you, and runs on your own computer, so your messages stay private.
 
 In this video:
-• How AI helps you communicate
-• Where your message appears
-• Opening a folder of symbols and adding symbols to your message
+• Changing a Bliss word with indicators and modifiers, with AI working out the new word
+• Building a new word from symbols you know, with AI suggesting names for it
 • Word suggestions for your next word
-• The buttons that move through your message, delete symbols and add more meaning
-• Turning your message into full sentences, and choosing one to say
-
-Buttons and folders can also show pictures in place of Bliss symbols.
+• Turning a few symbols into full sentences
+• Setting the style of your sentences, such as happy, polite or urgent
+• How Adaptive Palette learns about you, and how you decide what it keeps
 
 Try it online: https://adaptive-palette.pages.dev/
 AI features need the desktop version, which runs the AI on your own computer so your messages stay private.
@@ -17,6 +15,8 @@ Install the desktop version: https://github.com/inclusive-design/adaptive-palett
 What next?
 • Learning to communicate with Adaptive Palette: <Learn to communicate playlist link>
 • Setting it up for someone, or teaching it: <Set up and support playlist link>
+
+Funded in part by a grant from IDEA, NFRF and the Government of Canada. Developed by OCAD University and the Inclusive Design Research Centre.
 
 Chapters
 {{chapters}}
