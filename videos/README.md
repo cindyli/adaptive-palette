@@ -74,10 +74,10 @@ Watch the video and check that:
 1. Create `scripts/<name>/` with `steps.ts`, `narration.en.json`, `description.en.txt` and `stubs.json`. Copy
    `scripts/welcome/`. The runner puts the chapters in place of the `{{chapters}}` line in the description.
 2. Each step has an `id`; `narration.<lang>.json` has the text for every id.
-3. Give the first step `title: true` to show its narration as a title card, for at least 3 seconds. Give
-   `title` text to show that text on the card in place of the narration, which is still spoken. A title step
-   mid-video works as a slide between parts. An action under a title card must not open a dialog, because a
-   dialog draws above the card.
+3. Give the first step `title: true` to show its narration as a title card, for at least 3 seconds. The video
+   opens on it. Give `title` text to show that text on the card in place of the narration, which is still
+   spoken. A title step mid-video works as a slide between parts. An action under a title card must not open a
+   dialog, because a dialog draws above the card.
 4. Give the last step `credits: true` to show the funder credits, `assets/credits.<lang>.html`, on a white card
    for at least 3 seconds. The narration is still spoken.
 5. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
@@ -96,10 +96,11 @@ When writing the steps:
 3. Keep title card text short. The runner removes a trailing period.
 4. The runner handles the look: a magenta outline with the rest dimmed, a box that glides between areas,
    and a pointer for each click, held for a second after it. A click hides the highlight, and a highlight hides
-   the pointer.
+   the pointer. A title card fades out onto the next step that has no card. When that step only highlights,
+   the highlight is drawn under the card first.
 5. To set app state the screen cannot reach, import the app's module in `page.evaluate` by its dev server
    path, such as `/src/client/features/about-me/AboutMeState.ts`. That gives the app's own copy.
-   `scripts/welcome/` does this to fill About Me and to show modifier AI.
+   `scripts/welcome/` does this to fill About Me.
 
 ## Add a language
 

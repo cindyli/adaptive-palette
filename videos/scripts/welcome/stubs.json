@@ -18,6 +18,10 @@
       "reply": "1. I'm taking Rex for a walk.\n2. Can I take Rex for a walk?"
     },
     {
+      "match": "Modifiers, in order: opposite of",
+      "reply": "adults"
+    },
+    {
       "match": "You name new words",
       "reply": "dog walker\nwalker of dogs\ndog helper"
     }

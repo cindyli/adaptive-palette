@@ -10,6 +10,8 @@ const POINTER_MOVE_MS = 800;
 // After a click, so its result can be seen before the pointer moves on.
 const CLICK_HOLD_MS = 1000;
 const HIGHLIGHT_MOVE_MS = 400;
+// A title card fades in and out over this time.
+const CARD_FADE_MS = 400;
 const TARGET_TIMEOUT_MS = 5000;
 
 const OVERLAY_CSS = `
@@ -21,12 +23,13 @@ const OVERLAY_CSS = `
   #videoTitle {
     display: none; inset: 0; align-items: center; justify-content: center; padding: 0 10%;
     background: #13706b; color: #fff; font: bold 56px/1.3 sans-serif; text-align: center;
-    animation: videoFadeIn 400ms ease;
+    animation: videoFadeIn ${CARD_FADE_MS}ms ease;
   }
   #videoTitle.videoCard {
     flex-direction: column; background: #fff; color: #1a1a1a; font: 600 30px/1.4 sans-serif;
   }
   @keyframes videoFadeIn { from { opacity: 0; } }
+  @keyframes videoFadeOut { to { opacity: 0; } }
   #videoHighlight {
     display: none; border-radius: 6px; outline: 8px solid #ff1493; outline-offset: 2px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
@@ -81,30 +84,45 @@ export async function installOverlay (context: BrowserContext): Promise<void> {
 }
 
 /**
- * Remove the pointer and the title card, ready for the next step. The highlight stays until it moves or is removed.
+ * Remove the pointer, and fade out the title card. The highlight stays until it moves or is removed.
  * With `keepCard`, the card stays for the next one to replace, so the app does not show between two cards.
  */
 export async function clearOverlay (page: Page, keepCard = false): Promise<void> {
-  await page.evaluate((keep) => {
+  const fading = await page.evaluate(({ keep, fadeMs }) => {
     document.getElementById("videoPointer")!.style.display = "none";
-    if (!keep) {
-      sessionStorage.removeItem("videoTitle");
-      document.getElementById("videoTitle")!.style.display = "none";
+    const card = document.getElementById("videoTitle")!;
+    if (keep || card.style.display !== "flex") {
+      return false;
     }
-  }, keepCard);
+    sessionStorage.removeItem("videoTitle");
+    card.style.animation = `videoFadeOut ${fadeMs}ms ease forwards`;
+    return true;
+  }, { keep: keepCard, fadeMs: CARD_FADE_MS });
+  if (fading) {
+    await page.waitForTimeout(CARD_FADE_MS);
+    await page.evaluate(() => {
+      const card = document.getElementById("videoTitle")!;
+      card.style.display = "none";
+      // So the next card fades in. A card shown at once, or after a reload, has `animation: none`.
+      card.style.animation = "";
+    });
+  }
 }
 
-/** Cover the screen with `text` as a title card, without a trailing period. */
-export async function showTitle (page: Page, text: string): Promise<void> {
-  await page.evaluate((title) => {
+/** Cover the screen with `text` as a title card, without a trailing period. Without `fadeIn`, it shows at once. */
+export async function showTitle (page: Page, text: string, fadeIn = true): Promise<void> {
+  await page.evaluate(({ title, fade }) => {
     const card = document.getElementById("videoTitle")!;
     card.textContent = title.replace(/\.$/, "");
     card.classList.remove("videoCard");
     sessionStorage.setItem("videoTitle", card.textContent);
     card.hidePopover();
     card.showPopover();
+    if (!fade) {
+      card.style.animation = "none";
+    }
     card.style.display = "flex";
-  }, text);
+  }, { title: text, fade: fadeIn });
 }
 
 /** Cover the screen with `html` on a white card, such as the funder credits, once its images have loaded. */
@@ -159,6 +177,12 @@ export async function highlight (page: Page, selector?: string): Promise<void> {
     // Every time, so it stays above a dialog opened since it was last drawn.
     box.hidePopover();
     box.showPopover();
+    // A card still showing stays on top, so the highlight is drawn under it.
+    const card = document.getElementById("videoTitle")!;
+    if (card.style.display === "flex") {
+      card.hidePopover();
+      card.showPopover();
+    }
     if (appearing) {
       box.style.transition = "none";
     }

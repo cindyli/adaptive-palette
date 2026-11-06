@@ -155,16 +155,28 @@ async function recordSteps (
     await page.goto(`http://localhost:${PORT}/`);
     await page.locator(".screenPalette").waitFor();
 
+    const titleOf = (step: Step): string => (typeof step.title === "string" ? step.title : narration[step.id]);
+    // The video opens on the first title card, so the app is not seen before it.
+    if (steps[0]?.title) {
+      await showTitle(page, titleOf(steps[0]), false);
+      await page.waitForTimeout(200);  // Let the card be drawn before the timer, and so the video, starts.
+    }
+
     const timed: TimedStep[] = [];
     const t0 = Date.now();
     const elapsed = (): number => (Date.now() - t0) / 1000;
     for (const [index, step] of steps.entries()) {
       const start = elapsed();
       timed.push({ id: step.id, chapter: step.chapter, text: narration[step.id], start, duration: durations[index] });
+      const card = Boolean(step.title || step.credits);
       try {
-        await clearOverlay(page, Boolean(step.title || step.credits));
+        // A step that only highlights draws it under the card first, so the card fades out onto it.
+        if (!card && !step.action) {
+          await highlight(page, step.highlight);
+        }
+        await clearOverlay(page, card);
         if (step.title) {
-          await showTitle(page, typeof step.title === "string" ? step.title : narration[step.id]);
+          await showTitle(page, titleOf(step));
         }
         if (step.credits) {
           await showCard(page, credits);
@@ -175,7 +187,6 @@ async function recordSteps (
         throw new Error(`Step "${step.id}": ${(error as Error).message}`, { cause: error });
       }
       const pause = steps[index + 1]?.chapter ? CHAPTER_PAUSE_SECONDS : PAUSE_SECONDS;
-      const card = step.title || step.credits;
       const holdUntil = start + Math.max(durations[index], card ? TITLE_SECONDS : 0) + pause;
       await page.waitForTimeout(Math.max(0, holdUntil - elapsed()) * 1000);
     }

@@ -26,8 +26,6 @@ const DOG = `[id="${DOG_ID}"]`;
 // The app's modules as the dev server serves them. Importing one in the page gets the app's own copy, so a
 // step can change what the UI cannot reach.
 const MODULES = {
-  state: "/src/client/state/GlobalData.ts",
-  messageEdit: "/src/client/core/MessageEdit.ts",
   aboutMe: "/src/client/features/about-me/AboutMeState.ts"
 };
 
@@ -93,35 +91,15 @@ async function learnAboutMe (page: Page): Promise<void> {
   }, MODULES.aboutMe);
 }
 
-/**
- * Give the word at the caret `label`, marked as the model's. Today the app names a word with modifiers by
- * joining their labels, so this shows what modifier AI will do. Delete it once modifier AI ships.
- */
-async function simulateModifierLabel (page: Page, label: string): Promise<void> {
-  await page.evaluate(async ({ label, modules }) => {
-    type Message = { payloads: Record<string, unknown>[], caretPosition: number };
-    const { changeEncodingContents } = await import(modules.state) as { changeEncodingContents: { value: Message } };
-    const { editMessage } = await import(modules.messageEdit) as { editMessage: (next: Message) => boolean };
-    const { payloads, caretPosition } = changeEncodingContents.value;
-    editMessage({
-      payloads: payloads.map((payload, index) =>
-        index === caretPosition ? { ...payload, label, isAiLabel: true } : payload),
-      caretPosition
-    });
-  }, { label, modules: MODULES });
-}
-
 export const steps: Step[] = [
-  { id: "title", chapter: "Welcome", title: "Adaptive Palette" },
-  { id: "symbols", highlight: ".screenPalette > .actionBranchToPaletteCell" },
-  {
-    id: "message",
-    action: (page) => clickAll(page, ["[data-branchto=\"food\"]", "[id^=\"bread-\"]"]),
-    highlight: MESSAGE
-  },
+  { id: "title", chapter: "Welcome", title: true },
+  { id: "symbols" },
+  { id: "folders", action: (page) => click(page, "[data-branchto=\"food\"]") },
+  { id: "message", action: (page) => click(page, "[id^=\"bread-\"]"), highlight: MESSAGE },
+  { id: "home", action: (page) => click(page, HOME) },
   { id: "adapts", title: "AI adapts to you" },
   // Under the card, start again with nothing saved, so the message above is gone.
-  { id: "privacy", title: "Private, on your computer", action: resetApp },
+  { id: "privacy", title: "AI on your own computer keeps your information private", action: resetApp },
 
   { id: "part-words", chapter: "Say exactly what you mean", title: "Say exactly what you mean" },
   {
@@ -138,23 +116,27 @@ export const steps: Step[] = [
   },
   { id: "modifier", action: (page) => clickAll(page, ["#command-modifiers", "#modifier-opposite-of"]) },
   {
+    // From the model.
     id: "modifier-result",
-    action: async (page) => {
-      await simulateModifierLabel(page, "adults");
-      await page.locator(CARET_SYMBOL).getByText("adults").waitFor();
-    },
+    action: (page) => page.locator(CARET_SYMBOL).getByText("adults").waitFor(),
     highlight: CARET_SYMBOL
   },
+  // Each step ends by opening the next symbol's folder, so each word is said as its symbol is chosen.
   {
     id: "compose",
     action: (page) => clickAll(page, [
-      "#command-clear-encoding", "#command-new-word",
-      HOME, "[data-branchto=\"persons\"]", "[id^=\"16161-\"]",
-      HOME, "[data-branchto=\"say_speak\"]", "[id^=\"walk-\"]",
-      HOME, "[data-branchto=\"environment\"]", DOG
-    ]),
-    highlight: MESSAGE
+      "#command-clear-encoding", "#command-new-word", HOME, "[data-branchto=\"persons\"]"
+    ])
   },
+  {
+    id: "compose-person",
+    action: (page) => clickAll(page, ["[id^=\"16161-\"]", HOME, "[data-branchto=\"say_speak\"]"])
+  },
+  {
+    id: "compose-walk",
+    action: (page) => clickAll(page, ["[id^=\"walk-\"]", HOME, "[data-branchto=\"environment\"]"])
+  },
+  { id: "compose-dog", action: (page) => click(page, DOG), highlight: MESSAGE },
   {
     // Show the model's names while they are read out, then choose one.
     id: "compose-name",
