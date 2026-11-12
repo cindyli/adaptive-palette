@@ -16,12 +16,12 @@ import { useRef, useState } from "preact/hooks";
 
 import { insertWord } from "../core/MessageEdit";
 import { bstrToComposition } from "../utils/SvgUtils";
-import { MessagePreview } from "../components/MessagePreview";
+import { MessagePreview } from "./MessagePreview";
 import { t } from "../i18n/I18n";
 import "./ActionSvgEntryField.scss";
 
-export const SVG_ENTRY_FIELD_ID    = "svgEntryField";
-export const SYMBOL_LABEL_FIELD_ID = "symbolLabel";
+const SVG_ENTRY_FIELD_ID    = "svgEntryField";
+const SYMBOL_LABEL_FIELD_ID = "symbolLabel";
 
 type ActionSvgEntryFieldProps = {
   onRequestClose: () => void

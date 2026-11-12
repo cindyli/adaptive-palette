@@ -17,17 +17,17 @@ import { useState } from "preact/hooks";
 import { adaptivePaletteGlobals, settingsSavedCount } from "../state/GlobalData";
 import { isLocalHost } from "../core/OllamaApi";
 import { ModalDialog } from "./ModalDialog";
-import { ActionSearchGloss } from "../cells/ActionSearchGloss";
-import { ActionSvgEntryField } from "../cells/ActionSvgEntryField";
+import { ActionSearchGloss } from "./ActionSearchGloss";
+import { ActionSvgEntryField } from "./ActionSvgEntryField";
 import { SettingsDialog } from "../features/settings/SettingsDialog";
 import { AboutMeDialog } from "../features/about-me/AboutMeDialog";
 import { t } from "../i18n/I18n";
 import "./SymbolEntryToolbar.scss";
 
-export const SEARCH_DIALOG_ID = "searchSymbolDialog";
-export const SVG_DIALOG_ID = "svgBuilderStringDialog";
-export const SETTINGS_DIALOG_ID = "adjustSettingsDialog";
-export const ABOUT_ME_DIALOG_ID = "aboutMeDialog";
+const SEARCH_DIALOG_ID = "searchSymbolDialog";
+const SVG_DIALOG_ID = "svgBuilderStringDialog";
+const SETTINGS_DIALOG_ID = "adjustSettingsDialog";
+const ABOUT_ME_DIALOG_ID = "aboutMeDialog";
 
 type OpenDialogType = "search" | "svg" | "settings" | "aboutMe" | null;
 

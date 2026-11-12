@@ -10,9 +10,9 @@ three categories by prefix.
 | ---- | ------- | ------------------------- |
 | `ActionCodeCell` | Appends a Bliss symbol, or a picture, to the encoding area when clicked | `label`, and `composition` or `picture` (see [Palettes](Palettes.md#palette-json-structure)); `branchTo` (optional) goes to that palette after the insert, and gives the cell the folder look; `backgroundColor` and `textColor` (optional) |
 | `ActionBranchToPaletteCell` | Navigates to another palette | `label`, `composition` or `picture`, `branchTo` (the palette's name in [`palette_set.json`](../../public/palette-sets/standardBlissChart/palette_set.json)); `needsCaretSymbol` (optional) shows it as a command that is unavailable while no Bliss symbol is at the caret; `unavailableWhileBuildingWord` (optional) makes it unavailable while a word is being built; `backgroundColor` and `textColor` (optional) |
-| `ActionIndicatorCell` | Applies a Bliss indicator to the last symbol in the encoding area | `label`, `composition` |
-| `ActionPreModifierCell` | Prepends a modifier to the last symbol | `label`, `composition` |
-| `ActionPostModifierCell` | Appends a modifier to the last symbol | `label`, `composition` |
+| `ActionIndicatorCell` | Applies a Bliss indicator to the symbol at the caret | `label`, `composition` |
+| `ActionPreModifierCell` | Prepends a modifier to the symbol at the caret | `label`, `composition` |
+| `ActionPostModifierCell` | Appends a modifier to the symbol at the caret | `label`, `composition` |
 | `ActionRemoveIndicatorCell` | Removes an indicator from the symbol at the caret | `label`, `composition` |
 | `ActionRemoveModifierCell` | Removes a modifier from the symbol at the caret | `label`, `composition` |
 | `ActionSpeakCell` | Speaks the message aloud and records it, which feeds word prediction | `label`, `composition`, `ariaControls` |
@@ -39,6 +39,7 @@ three categories by prefix.
 | `ContentEncoding` | Displays the current encoding (the input area showing selected symbols) | layout fields only |
 | `ContentLabel` | Text in a grid slot, with no interaction; `aria-hidden`, so use it only where the cells it heads already name themselves. See [Message Attributes](../MessageAttributes.md) | `label` |
 | `ContentPredictedWords` | The suggested next words: one row of `numSuggestions` slots (a user setting), and a live region that is never shown | layout fields only |
+| `ContentRemoved` | A cell that led to a grid removed for privacy: its label, with the notice on a second line. Text, not a button: pressing it does nothing and switch scanning skips it, but screen readers read it. The Grid 3 import makes it. See [Removing personal grids](Grid3Mapping.md#removing-personal-grids) | `label`; `backgroundColor` and `textColor` (optional) |
 | `ContentSentenceChoices` | The sentence area: a status line, the sentences `CommandMakeSentence` made, and the "type yours" box. With `"layer": true`, the screen palette draws it as a layer over the rows below the header (see [Palettes](Palettes.md#fitting-the-screen)). Its cell id becomes its element id; point `CommandMakeSentence`'s `ariaControls` at it | layout fields only |
 
 ## `PaletteInclude` — another palette in a span
