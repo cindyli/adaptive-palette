@@ -10,17 +10,16 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
-import { CellColorsType, PictureOrSymbolInfoType, LayoutInfoType, SymbolEncodingType } from "../index.d";
+import type { CellColorsType, PictureOrSymbolInfoType, LayoutInfoType, SymbolEncodingType } from "../index.d";
 import { BlissSymbol } from "../components/BlissSymbol";
-import { adaptivePaletteGlobals } from "../state/GlobalData";
+import { findSymbolById } from "../utils/SvgUtils";
 import { insertWord } from "../core/MessageEdit";
 import { goToPalette } from "../core/PaletteNavigation";
 import { colorStyle, generateGridStyle } from "../utils/GridUtils";
 import { normalizeComposition } from "../utils/SymbolEncodingUtils";
 import { announceIfEnabled } from "../utils/SpeechUtils";
-import "./ActionCodeCell.scss";
 
 type ActionCodeCellPropsType = {
   id: string,
@@ -39,7 +38,7 @@ export function ActionCodeCell (props: ActionCodeCellPropsType): VNode {
 
   const cellClicked = () => {
     const symbol = typeof composition === "number"
-      ? adaptivePaletteGlobals.symbols.find(s => s.id === composition)
+      ? findSymbolById(composition)
       : null;
     // The payload includes an empty `modifierInfo` for this new symbol. A picture is not in the
     // Bliss dictionary, so it has no `userSelectedSymbolId`.
@@ -59,14 +58,13 @@ export function ActionCodeCell (props: ActionCodeCellPropsType): VNode {
 
   return html`
     <button
-      id="${props.id}" class="ActionCodeCell${branchTo ? " foldedCorner" : ""}" style="${gridStyles + colorStyle(backgroundColor, textColor)}"
+      id="${props.id}" class="symbolCell actionCodeCell${branchTo ? " foldedCorner" : ""}" style="${gridStyles + colorStyle(backgroundColor, textColor)}"
       onClick=${cellClicked}>
       <${BlissSymbol}
         composition=${composition}
         picture=${picture}
         label=${label}
         color="currentColor"
-        isPresentation=true
       />
     </button>
   `;

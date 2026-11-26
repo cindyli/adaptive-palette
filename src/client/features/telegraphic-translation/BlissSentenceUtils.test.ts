@@ -16,8 +16,8 @@ import {
 } from "./BlissSentenceUtils";
 import { parseWordsLine } from "./TelegraphicTranslationUtils";
 import { saveMessageRecord } from "../../core/MessageLog";
-import { SymbolCompositionType, SymbolEncodingType } from "../../index.d";
-import { compositionToBstr, getSvgElement, initSvgCompositeDefinitions } from "../../utils/SvgUtils";
+import type { SymbolCompositionType, SymbolEncodingType } from "../../index.d";
+import { compositionToBstr, getSvgElement } from "../../utils/SvgUtils";
 import { resetMessageLog } from "../../testUtils/MessageLogTestUtils";
 
 describe("BlissSentenceUtils", (): void => {
@@ -195,10 +195,6 @@ describe("BlissSentenceUtils", (): void => {
 
   describe("blissSlots", (): void => {
 
-    beforeAll((): void => {
-      initSvgCompositeDefinitions();
-    });
-
     beforeEach(async (): Promise<void> => {
       await resetMessageLog();
     });
@@ -274,7 +270,7 @@ describe("BlissSentenceUtils", (): void => {
 
     it("produces an svg-builder string the library accepts", (): void => {
       const composition = blissSlots("I came home")[1].payload?.composition;
-      expect(compositionToBstr(composition as SymbolCompositionType)).toBe("1440;;B92");
+      expect(compositionToBstr(composition as SymbolCompositionType)).toBe("B335;B81/B428;;B92");
       expect(getSvgElement(composition as SymbolCompositionType)).toBeDefined();
     });
 

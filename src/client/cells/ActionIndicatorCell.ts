@@ -10,19 +10,18 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
-import { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
+import type { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
 import { BlissSymbol } from "../components/BlissSymbol";
 import { spokenLabel } from "../components/AiBadge";
 import { changeEncodingContents, wordBuildSignal } from "../state/GlobalData";
-import { editMessage } from "../core/MessageEdit";
+import { editSymbolAtCaret } from "../core/MessageEdit";
 import { generateGridStyle } from "../utils/GridUtils";
-import { applyModifiersToLabel, caretComposition, replaceAtCaret } from "../utils/SymbolEncodingUtils";
+import { applyModifiersToLabel, caretComposition } from "../utils/SymbolEncodingUtils";
 import { announceIfEnabled, speakUnavailable } from "../utils/SpeechUtils";
 import { findWordIndicators, findClassifierFromLeft } from "../utils/SvgUtils";
-import { baseOf, relabel } from "../utils/SymbolLabelUtils";
-import "./ActionIndicatorCell.scss";
+import { baseOf, relabel } from "../core/SymbolLabelUtils";
 
 type ActionIndicatorCodeCellPropsType = {
   id: string,
@@ -84,9 +83,7 @@ export function ActionIndicatorCell (props: ActionIndicatorCodeCellPropsType): V
       "indicatorId": indicatorId,
       ...baseOf(symbolToEdit)
     });
-    // Held by the guard: the label on screen is unchanged, so name the indicator alongside it.
-    if (!editMessage({ payloads: replaceAtCaret(payloads, caretPosition, edited), caretPosition: caretPosition })) {
-      announceIfEnabled(`${symbolToEdit.label}, ${label}`);
+    if (!editSymbolAtCaret(edited, label)) {
       return;
     }
     // A label from the table or the model is spoken as it is. One the model is still working out,
@@ -98,11 +95,10 @@ export function ActionIndicatorCell (props: ActionIndicatorCodeCellPropsType): V
   };
 
   return html`
-    <button id="${props.id}" class="actionIndicatorCell" style="${gridStyles}" onClick=${cellClicked} aria-disabled=${unavailable}>
+    <button id="${props.id}" class="symbolCell actionIndicatorCell" style="${gridStyles}" onClick=${cellClicked} aria-disabled=${unavailable}>
       <${BlissSymbol}
         composition=${indicatorId}
         label=${label}
-        isPresentation=true
       />
     </button>
   `;

@@ -9,26 +9,24 @@
  * You may obtain a copy of the License at
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
-import { useEffect, useState } from "preact/hooks";
+import { useState } from "preact/hooks";
 import { ModalDialog } from "../../components/ModalDialog";
 import { BlissSymbol } from "../../components/BlissSymbol";
 import { AiBadge, aiSuggestionLabel } from "../../components/AiBadge";
 import { adaptivePaletteGlobals } from "../../state/GlobalData";
-import { INPUT_AREA_ID } from "../../cells/ContentEncoding";
+import { inputAreaElement } from "../../utils/TextEntryUtils";
 import { t } from "../../i18n/I18n";
 import {
-  type WordDialogType, chooseMatch, chooseName, closeWordDialog, wordDialogSignal
+  type WordDialogType, chooseMatch, chooseName, closeWordDialog, nameSuggestionsSignal, wordDialogSignal
 } from "./ComposeWordState";
-import { MAX_SUGGESTED_NAMES, canSuggestNames, requestNameSuggestions } from "./WordNamingUtils";
+import { MAX_SUGGESTED_NAMES } from "./WordNamingUtils";
 import "./NameWordDialog.scss";
 
 const NAME_WORD_DIALOG_ID = "nameWordDialog";
 const NAME_FIELD_ID = "nameWordField";
 const NAMES_LABEL_ID = "nameWordNamesLabel";
-
-type SuggestStateType = { status: "idle" } | { status: "working" } | { status: "done", names: string[] };
 
 /**
  * The dialog's body. Mounted only while the dialog is open, so the typed name starts empty each time.
@@ -38,33 +36,12 @@ type SuggestStateType = { status: "idle" } | { status: "working" } | { status: "
 function NameWordBody (props: { dialog: WordDialogType }): VNode {
   const { dialog } = props;
   const [typedName, setTypedName] = useState("");
-  const [suggest, setSuggest] = useState<SuggestStateType>({ status: "idle" });
-
-  // Ask the model for names once, as the dialog opens. Not for a word already in the vocabulary.
-  // Closing the dialog stops the request, so going back and pressing Done again never queues
-  // another behind it.
-  useEffect(() => {
-    if (dialog.match || !canSuggestNames()) {
-      return;
-    }
-    const controller = new AbortController();
-    setSuggest({ status: "working" });
-    requestNameSuggestions(dialog.partLabels, dialog.offeredName, controller.signal)
-      .then((names) => setSuggest({ status: "done", names }))
-      .catch((error) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        console.error(`Could not suggest names: ${String(error)}`);
-        setSuggest({ status: "done", names: [] });
-      });
-    return () => controller.abort();
-  }, []);
+  const suggest = nameSuggestionsSignal.value;
 
   if (dialog.match) {
     const { label, composition } = dialog.match;
     return html`
-      <div class="wordPreview"><${BlissSymbol} composition=${composition} label="" isPresentation="true" /></div>
+      <div class="wordPreview"><${BlissSymbol} composition=${composition} label="" /></div>
       <div class="dialogFooter">
         <button type="button" autofocus onClick=${chooseMatch}>${t("wordMatchUse", { label })}</button>
         <button type="button" onClick=${closeWordDialog}>${t("wordBack")}</button>
@@ -95,7 +72,7 @@ function NameWordBody (props: { dialog: WordDialogType }): VNode {
   // The name offered comes first and takes the focus: one selection names the word without a keyboard.
   // With none, the name field takes it.
   return html`
-    <div class="wordPreview"><${BlissSymbol} composition=${dialog.composition} label="" isPresentation="true" /></div>
+    <div class="wordPreview"><${BlissSymbol} composition=${dialog.composition} label="" /></div>
     <p id=${NAMES_LABEL_ID} class="wordSectionLabel">${t("wordChooseName")}</p>
     <div class="wordNames" role="group" aria-labelledby=${NAMES_LABEL_ID}>
       ${hasOffered && html`<button type="button" autofocus onClick=${useOffered}>
@@ -142,7 +119,7 @@ export function NameWordDialog (): VNode {
       title=${title}
       isOpen=${dialog !== null}
       onClose=${closeWordDialog}
-      restoreFocusTo=${() => document.getElementById(INPUT_AREA_ID)}>
+      restoreFocusTo=${() => inputAreaElement()}>
       ${dialog && html`<${NameWordBody} dialog=${dialog} />`}
     <//>
   `;

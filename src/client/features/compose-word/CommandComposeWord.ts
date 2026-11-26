@@ -11,15 +11,14 @@
  */
 
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import type { LayoutInfoType, PictureOrSymbolInfoType } from "../../index.d";
-import { BlissSymbol } from "../../components/BlissSymbol";
+import { CommandButton } from "../../components/CommandButton";
 import { wordBuildSignal } from "../../state/GlobalData";
-import { INPUT_AREA_ID } from "../../cells/ContentEncoding";
-import { generateGridStyle } from "../../utils/GridUtils";
-import { announceIfEnabled, speakUnavailable } from "../../utils/SpeechUtils";
+import { inputAreaElement } from "../../utils/TextEntryUtils";
+import { announceIfEnabled } from "../../utils/SpeechUtils";
 import {
   canSaveAtCaret, canSplitAtCaret, cancelBuilding, hasSymbol, insertComma, insertSpace, requestFinish,
   saveWordAtCaret, setCombine, splitAtCaret, startBuilding
@@ -54,14 +53,14 @@ const ACTIONS: Record<ComposeActionType, { run: () => void, unavailable?: () => 
  */
 export function CommandComposeWord (props: CommandComposeWordProps): VNode | null {
   const { id, options } = props;
-  const { label, labelLanguage, composition, action, columnStart, columnSpan, rowStart, rowSpan } = options;
+  const { label, labelLanguage, action } = options;
   const buttonRef = useRef<HTMLButtonElement>(null);
   // Compose new word and Cancel swap the controls, taking away the button just pressed. Focus
   // goes to the input area, where the word is, rather than falling to the page. A layout effect,
   // so the cleanup runs while the button is still in the page.
   useLayoutEffect(() => () => {
     if (buttonRef.current && document.activeElement === buttonRef.current) {
-      document.getElementById(INPUT_AREA_ID)?.focus();
+      inputAreaElement()?.focus();
     }
   }, []);
   // `hasOwn`, so a name such as "toString" inherited from Object is not taken for an action.
@@ -70,29 +69,18 @@ export function CommandComposeWord (props: CommandComposeWordProps): VNode | nul
     return null;
   }
   const entry = ACTIONS[action];
-  // Marked unavailable rather than `disabled`, so the button keeps its place in the tab order
-  // for switch and eye-gaze users.
-  const unavailable = entry.unavailable?.() ?? false;
+  // Left undefined for an action that is never unavailable, so the button has no `aria-disabled`.
+  const unavailable = entry.unavailable?.();
 
   const cellClicked = (): void => {
-    if (unavailable) {
-      speakUnavailable(label);
-      return;
-    }
     entry.run();
     announceIfEnabled(label, labelLanguage);
   };
 
   return html`
-    <button
-      ref=${buttonRef}
-      id=${id}
-      class="btn-command"
-      style=${generateGridStyle(columnStart, columnSpan, rowStart, rowSpan)}
-      aria-disabled=${entry.unavailable ? unavailable : undefined}
+    <${CommandButton}
+      ref=${buttonRef} id=${id} options=${options} unavailable=${unavailable}
       aria-pressed=${action === "combine" ? !!wordBuildSignal.value?.combine : undefined}
-      onClick=${cellClicked}>
-      <${BlissSymbol} composition=${composition} label=${label} />
-    </button>
+      onClick=${cellClicked} />
   `;
 }

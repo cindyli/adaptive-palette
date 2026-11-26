@@ -18,11 +18,12 @@
  * edit is published. An edit the guard holds never reaches the signal, so there is nothing to
  * take back.
  *
- * This lives in `core/` rather than in the feature that vetoes edits, so that no cell imports
- * a feature.
+ * This lives in `core/` rather than in the feature that vetoes edits or clears the message, so
+ * that no cell imports a feature.
  */
 import { changeEncodingContents, wordBuildSignal } from "../state/GlobalData";
-import { insertWordAtCaret } from "../utils/SymbolEncodingUtils";
+import { insertWordAtCaret, replaceAtCaret } from "../utils/SymbolEncodingUtils";
+import { announceIfEnabled } from "../utils/SpeechUtils";
 import type { ContentSignalDataType, SymbolEncodingType } from "../index.d";
 
 /**
@@ -45,6 +46,33 @@ let guard: EditGuard | null = null;
  */
 export function setEditGuard (fn: EditGuard | null): void {
   guard = fn;
+}
+
+/**
+ * Empties the message together with what a feature keeps that belongs to it, such as the
+ * sentences made from it. Registered from `core/InitGlobals.ts`.
+ */
+let clearer: (() => void) | null = null;
+
+/**
+ * Register what Delete all does. With none registered, it empties the message alone.
+ * @param {Function | null} fn - The clearer, or `null` to remove the one registered.
+ * @returns {void}
+ */
+export function setMessageClearer (fn: (() => void) | null): void {
+  clearer = fn;
+}
+
+/**
+ * Delete the whole message, through the registered clearer if there is one.
+ * @returns {void}
+ */
+export function clearMessage (): void {
+  if (clearer) {
+    clearer();
+    return;
+  }
+  editMessage({ payloads: [], caretPosition: -1 });
 }
 
 /**
@@ -92,7 +120,24 @@ export function editMessage (next: ContentSignalDataType, afterApply?: () => voi
 }
 
 /**
- * Add a word after the caret, with a space before it inside a new word's combine markers. Every
+ * Replace the symbol at the caret with an edited one, as the modifier and indicator cells do.
+ * When the guard holds the edit, the label on screen is unchanged, so the old label is spoken
+ * with the cell's label.
+ * @param {SymbolEncodingType} edited - The symbol with its new parts and label.
+ * @param {string} cellLabel          - The label of the cell that made the change.
+ * @returns {boolean} - As for `editMessage()`. On `true` the caller announces the new label.
+ */
+export function editSymbolAtCaret (edited: SymbolEncodingType, cellLabel: string): boolean {
+  const { payloads, caretPosition } = changeEncodingContents.value;
+  if (editMessage({ payloads: replaceAtCaret(payloads, caretPosition, edited), caretPosition })) {
+    return true;
+  }
+  announceIfEnabled(`${payloads[caretPosition].label}, ${cellLabel}`);
+  return false;
+}
+
+/**
+ * Add a word after the caret, with a comma before it inside a new word's combine markers. Every
  * cell that adds a word adds it this way.
  * @param {SymbolEncodingType} word - The word to add.
  * @param {Function} afterApply     - Optional. As for `editMessage()`.
@@ -100,6 +145,6 @@ export function editMessage (next: ContentSignalDataType, afterApply?: () => voi
  */
 export function insertWord (word: SymbolEncodingType, afterApply?: () => void): boolean {
   const { payloads, caretPosition } = changeEncodingContents.value;
-  const spaced = wordBuildSignal.value?.combine ?? false;
-  return editMessage(insertWordAtCaret(word, payloads, caretPosition, spaced), afterApply);
+  const withComma = wordBuildSignal.value?.combine ?? false;
+  return editMessage(insertWordAtCaret(word, payloads, caretPosition, withComma), afterApply);
 }

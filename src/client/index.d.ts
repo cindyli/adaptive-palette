@@ -10,7 +10,7 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import type { Language, LabelType } from "./i18n/I18n";
+import type { Language, LabelType, StringKey } from "./i18n/I18n";
 
 // Symbol composition can be either a symbol ID defined in bliss_symbol_explanations.json,
 // for example 1433, or an array of symbol IDs and/or strings that represent the composition
@@ -159,6 +159,8 @@ export type SymbolEncodingType = PictureOrSymbolInfoType & {
   pendingLabel?: string,
   // A space between two words inside a new word's combine markers. It has no symbol.
   isSpace?: boolean,
+  // A comma added automatically inside a new word's combine markers. Turning the marker off removes it.
+  isAutoComma?: boolean,
   // A word built with Compose new word. Only such a word can be saved to a palette.
   isComposedWord?: boolean
 }
@@ -324,7 +326,9 @@ export type SentenceCompletionsStateType = {
   // The language the sentences were asked for in. Absent means the UI language.
   language?: Language,
   // Each sentence's words, as the model gave them, for a language `compromise` cannot parse.
-  words?: Map<string, SentenceSpanType[]>
+  words?: Map<string, SentenceSpanType[]>,
+  // The message to show for the `error` status. Absent means `sentenceCannotComplete`.
+  errorKey?: StringKey
 };
 
 /**
@@ -359,8 +363,8 @@ export type AttributeCellType = BlissSymbolInfoType & LayoutInfoType & {
   category: string
 };
 
-// The options a `ContentLabel` carries in the palette JSON.
-export type ContentLabelType = LayoutInfoType & {
+// The options a `ContentLabel` carries in the palette JSON. The Grid 3 import gives a rest cell its colours.
+export type ContentLabelType = LayoutInfoType & CellColorsType & {
   label: string
 };
 

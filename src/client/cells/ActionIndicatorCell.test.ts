@@ -20,7 +20,7 @@ import { queryChat } from "../core/OllamaApi";
 import { renderCell, expectCellRendered } from "../testUtils/CellTestUtils";
 import { ActionIndicatorCell } from "./ActionIndicatorCell";
 import { aiSuggestionLabel } from "../components/AiBadge";
-import { resetSymbolLabelsForTests } from "../utils/SymbolLabelUtils";
+import { resetSymbolLabelsForTests } from "../core/SymbolLabelUtils";
 import { mockedAnnounceIfEnabled, mockedSpeakUnavailable } from "../testUtils/SpeechUtilsMock";
 import { languageSignal } from "../i18n/I18n";
 import type { SymbolEncodingType } from "../index.d";
@@ -93,7 +93,7 @@ describe("ActionIndicatorCell", (): void => {
 
     renderCell(ActionIndicatorCell, TEST_CELL_ID, testCell.options);
 
-    const button = await expectCellRendered(TEST_CELL_ID, testCell.options, "actionIndicatorCell");
+    const button = await expectCellRendered(TEST_CELL_ID, testCell.options, "symbolCell actionIndicatorCell");
 
     // Check disabled state.  `changeEncodingContents` is initialized
     // with an empty array, hence there should be an `aria-disabled` attribute.
@@ -116,7 +116,7 @@ describe("ActionIndicatorCell", (): void => {
 
     renderCell(ActionIndicatorCell, TEST_CELL_ID, testCell.options);
 
-    let button = await expectCellRendered(TEST_CELL_ID, testCell.options, "actionIndicatorCell");
+    let button = await expectCellRendered(TEST_CELL_ID, testCell.options, "symbolCell actionIndicatorCell");
 
     // Check disabled state. `changeEncodingContents` is initialized
     // with an empty array, hence there should be an `aria-disabled` attribute.

@@ -8,8 +8,6 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "alwaysStrict": true,
@@ -18,6 +16,7 @@
   "include": [
     "node_modules/vite/client.d.ts",
     "src/client/**/*",
+    "apps/palette-generator/**/*",
     "videos/**/*"
   ]
 }

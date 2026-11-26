@@ -11,8 +11,8 @@
  */
 
 import { makeDefaultConfig } from "../../core/Config";
-import { AdaptivePaletteConfigType } from "../../index.d";
-import { hasModel, missingModels, requiredModels, setupStatus } from "./SetupState";
+import type { AdaptivePaletteConfigType } from "../../index.d";
+import { missingModels, requiredModels, setupStatus } from "./SetupState";
 
 // The default config names no models at all, so each test says which it wants.
 const configWith = (models: {
@@ -56,23 +56,12 @@ describe("SetupState", (): void => {
     test("asks for nothing when telegraphic translation is not configured", () => {
       expect(requiredModels(configWith({}))).toEqual([]);
     });
-  });
 
-  describe("hasModel", () => {
-    test("matches a name exactly", () => {
-      expect(hasModel(["gemma4:12b", "llama3:8b"], "gemma4:12b")).toBe(true);
-    });
-
-    test("does not match a different tag of the same model", () => {
-      expect(hasModel(["gemma4:27b"], "gemma4:12b")).toBe(false);
-    });
-
-    test("an untagged name matches the `latest` tag Ollama gives it", () => {
-      expect(hasModel(["gemma4:latest"], "gemma4")).toBe(true);
-    });
-
-    test("finds nothing in an empty list", () => {
-      expect(hasModel([], "gemma4:12b")).toBe(false);
+    test("includes the About Me and word naming models", () => {
+      const config = configWith({ prediction: "gemma4:12b" });
+      config.aboutMe = { ...config.aboutMe, model: "qwen3:8b" } as AdaptivePaletteConfigType["aboutMe"];
+      config.wordNaming = { ...config.wordNaming, model: "llama3:8b" } as AdaptivePaletteConfigType["wordNaming"];
+      expect(requiredModels(config)).toEqual(["gemma4:12b", "qwen3:8b", "llama3:8b"]);
     });
   });
 
@@ -89,8 +78,12 @@ describe("SetupState", (): void => {
   });
 
   describe("setupStatus", () => {
-    test("an empty model list means Ollama is not answering", () => {
-      expect(setupStatus(configWith({ indicator: "gemma4:12b" }), [])).toBe("noOllama");
+    test("no model list means Ollama is not answering", () => {
+      expect(setupStatus(configWith({ indicator: "gemma4:12b" }), null)).toBe("noOllama");
+    });
+
+    test("an empty model list means Ollama answers but has nothing downloaded", () => {
+      expect(setupStatus(configWith({ indicator: "gemma4:12b" }), [])).toBe("missingModels");
     });
 
     test("a model the config asks for and Ollama has not got", () => {
@@ -110,7 +103,7 @@ describe("SetupState", (): void => {
     // Nothing would use a model, so the tester is not asked to download one -- the state a
     // `config.json` that fails to parse falls back to.
     test("a config that asks for no model is ready even with Ollama down", () => {
-      expect(setupStatus(configWith({}), [])).toBe("ready");
+      expect(setupStatus(configWith({}), null)).toBe("ready");
     });
   });
 });

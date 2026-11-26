@@ -10,12 +10,13 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
 import { useRef, useState } from "preact/hooks";
 
 import { ModalDialog } from "../../components/ModalDialog";
-import { PullProgressType, getModelNames, pullModel } from "../../core/OllamaApi";
+import type { PullProgressType} from "../../core/OllamaApi";
+import { getModelNames, pullModel } from "../../core/OllamaApi";
 import { adaptivePaletteGlobals } from "../../state/GlobalData";
 import { missingModels, reloadPage, setupDismissedSignal, setupStatus } from "./SetupState";
 import { t } from "../../i18n/I18n";
@@ -42,6 +43,16 @@ export const MISSING_MODEL_TEXT = (models: string[]): string =>
   t("setupMissingModel", { models: models.join(` ${t("and")} `) });
 
 /**
+ * Store a fresh model list in the globals.
+ * @param {string[] | null} found - What `getModelNames()` returned.
+ * @returns {void}
+ */
+function storeModels (found: string[] | null): void {
+  adaptivePaletteGlobals.models = found ?? [];
+  adaptivePaletteGlobals.ollamaReachable = found !== null;
+}
+
+/**
  * The first-run dialog: install Ollama, or download the model the configuration asks for.
  *
  * It appears whenever the conditions hold rather than on a stored "first run" flag, so a
@@ -62,15 +73,18 @@ export function FirstRunSetup (): VNode {
   // triggers no re-render on its own. Holding a copy in state -- and always setting it to the
   // fresh array `getModelNames()` returns -- is what makes `retry()`'s result actually reach
   // the screen: a `useState` setter bails out on a value that is reference-equal to the
-  // current one, which a re-read of the same mutable field would be.
-  const [models, setModels] = useState(adaptivePaletteGlobals.models);
+  // current one, which a re-read of the same mutable field would be. `null` means Ollama
+  // did not answer.
+  const [models, setModels] = useState<string[] | null>(
+    adaptivePaletteGlobals.ollamaReachable ? adaptivePaletteGlobals.models : null
+  );
   const [progress, setProgress] = useState<PullProgressType | null>(null);
   const [isPulling, setIsPulling] = useState(false);
   const [hasFailed, setHasFailed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const status = setupStatus(config, models);
-  const missing = missingModels(config, models);
+  const missing = missingModels(config, models ?? []);
   const isOpen = status !== "ready" && !setupDismissedSignal.value;
 
   const dismiss = (): void => {
@@ -82,7 +96,7 @@ export function FirstRunSetup (): VNode {
   // feature see the models, so it is only done once there is something to see.
   const retry = (): void => {
     void getModelNames().then((found) => {
-      adaptivePaletteGlobals.models = found;
+      storeModels(found);
       if (setupStatus(config, found) === "ready") {
         reloadPage();
       } else {
@@ -107,7 +121,7 @@ export function FirstRunSetup (): VNode {
         await pullModel(model, setProgress, controller.signal);
       }
       const found = await getModelNames();
-      adaptivePaletteGlobals.models = found;
+      storeModels(found);
       reloadPage();
     };
 

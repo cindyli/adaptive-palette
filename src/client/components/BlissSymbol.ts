@@ -10,13 +10,12 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
+import { useLayoutEffect, useRef } from "preact/hooks";
 import { getSvgElement } from "../utils/SvgUtils";
 import { AiBadge } from "./AiBadge";
-import { SymbolCompositionType } from "../index.d";
-
-export const GRAPHIC_ROLE = "graphic-symbol img";
+import type { SymbolCompositionType } from "../index.d";
 
 type BlissSymbolPropsType = {
   // The symbol to draw. Absent for a picture, or for a cell that shows its label only.
@@ -26,36 +25,38 @@ type BlissSymbolPropsType = {
   label: string,
   // The colour of the symbol's strokes and letters, as a CSS colour. Black when absent.
   color?: string,
-  // Aria markup information for svg part of the BlissSymbol.  The first is
-  // really a boolean, but the html template function converts it to string
-  // values.
-  isPresentation: "true" | "false",
-  // @id of label element when isPresntation is "false"
-  labelledBy?: string,
   // True when the label's provenance is to be marked: the badge before the label, and the
-  // label italicised. The caller folds in the config; this only draws it. Only meaningful when
-  // `isPresentation` is "true": otherwise the label element is the `aria-labelledby` target, and
-  // the badge could land in the computed accessible name despite being `aria-hidden`.
+  // label italicised. The caller folds in the config; this only draws it.
   isMarked?: boolean,
   // True when the label waits for a model's answer: the label is dimmed, with "…" after it.
   isPending?: boolean
 }
 
-// One template per SVG markup string. `html` keeps every template array it is given, keyed by
-// the array itself, and never drops one, so a new array on each draw would grow without end.
+// One template per symbol and colour, so each is built once. `html` keeps every template array it is
+// given, keyed by the array itself, and never drops one, so a new array on each draw would grow
+// without end. Dropping entries here would not free memory, since `html` still holds the arrays.
+// ponytail: grows by one entry per symbol and colour drawn in a session; fine for a palette's worth.
 const svgTemplates = new Map<string, TemplateStringsArray>();
 
+// The template for no symbol: a picture, or a label alone.
+const NO_SVG = Object.assign([""], { raw: [""] });
+
 /**
- * The SVG markup as a template `html` can parse into elements. `html` takes a
- * `TemplateStringsArray`, which is an array of strings with a `raw` copy of itself.
- * @param {string} markup - The SVG markup, or the empty string for no symbol.
+ * The symbol's SVG markup as a template `html` can parse into elements. The drawing is hidden from
+ * screen readers, since the label names the symbol.
+ * @param {SymbolCompositionType} composition - The symbol.
+ * @param {string} color - Optional. The colour of the strokes and letters.
  * @returns {TemplateStringsArray}
  */
-function svgTemplate (markup: string): TemplateStringsArray {
-  let template = svgTemplates.get(markup);
+function svgTemplate (composition: SymbolCompositionType, color?: string): TemplateStringsArray {
+  const key = `${JSON.stringify(composition)}|${color}`;
+  let template = svgTemplates.get(key);
   if (!template) {
+    const svgElement = getSvgElement(composition, color);
+    svgElement.setAttribute("aria-hidden", "true");
+    const markup = svgElement.outerHTML;
     template = Object.assign([markup], { raw: [markup] });
-    svgTemplates.set(markup, template);
+    svgTemplates.set(key, template);
   }
   return template;
 }
@@ -70,27 +71,32 @@ function hidePicture (event: Event): void {
   console.error(`Picture not loaded: ${img.src}`);
 }
 
-export function BlissSymbol (props: BlissSymbolPropsType): VNode {
-  const { composition, picture, label, color, isPresentation, labelledBy, isMarked, isPending } = props;
-  // A picture is drawn in place of the symbol, so the symbol is not built.
-  const svgElement = picture === undefined && composition !== undefined ? getSvgElement(composition, color) : undefined;
+// Each step multiplies the label's font size by this, until the label fits.
+const LABEL_SCALE_STEP = 0.9;
 
-  // Deal with aria markup, depending on whether the SVG is for presentation only or
-  // associates with a labelled area.
-  let svgMarkupString = "";
-  if (svgElement) {
-    if (isPresentation === "true") {
-      svgElement.setAttribute("aria-hidden", "true");
-    } else {
-      svgElement.setAttribute("role", `${GRAPHIC_ROLE}`);
-      if (labelledBy) {
-        svgElement.setAttribute("aria-labelledby", labelledBy);
-      }
-    }
-    svgMarkupString = svgElement.outerHTML;
+/**
+ * Shrink a label until its text fits its box, or its font size reaches the 0.5rem floor
+ * `Palette.scss` sets. Starts again from full size, so a label grows back when its cell grows.
+ * @param {HTMLElement} labelElement - The label.
+ */
+function fitLabel (labelElement: HTMLElement): void {
+  const minFontSize = 0.5 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const overflows = (): boolean => labelElement.scrollHeight > labelElement.clientHeight ||
+    labelElement.scrollWidth > labelElement.clientWidth;
+  let scale = 1;
+  labelElement.style.setProperty("--labelScale", "1");
+  while (overflows() && parseFloat(getComputedStyle(labelElement).fontSize) > minFontSize) {
+    scale *= LABEL_SCALE_STEP;
+    labelElement.style.setProperty("--labelScale", String(scale));
   }
+}
 
-  const templateStringArray = svgTemplate(svgMarkupString);
+export function BlissSymbol (props: BlissSymbolPropsType): VNode {
+  const { composition, picture, label, color, isMarked, isPending } = props;
+  // A picture is drawn in place of the symbol, so the symbol is not built.
+  const templateStringArray = picture === undefined && composition !== undefined
+    ? svgTemplate(composition, color)
+    : NO_SVG;
 
   const labelClass = [isMarked && "aiLabel", isPending && "pendingLabel"].filter(Boolean).join(" ") || undefined;
   const badge = isMarked ? html`<${AiBadge} />` : null;
@@ -103,8 +109,22 @@ export function BlissSymbol (props: BlissSymbolPropsType): VNode {
     <img key=${picture} class="cellPicture" src=${picture} alt="" aria-hidden="true" onError=${hidePicture} />
   `;
 
+  // In a screen palette cell, a long label shrinks to fit, and again whenever the cell resizes.
+  const labelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect((): (() => void) | undefined => {
+    const labelElement = labelRef.current;
+    const cell = labelElement?.parentElement;
+    if (!labelElement || !cell?.matches(".screenPalette > button")) {
+      return undefined;
+    }
+    fitLabel(labelElement);
+    const observer = new ResizeObserver((): void => fitLabel(labelElement));
+    observer.observe(cell);
+    return (): void => observer.disconnect();
+  }, [label]);
+
   return html`
     ${pictureElement}${html(templateStringArray)}
-    <div id="${labelledBy}" class=${labelClass}>${badge}${label}${waiting}</div>
+    <div ref=${labelRef} class=${labelClass}>${badge}${label}${waiting}</div>
   `;
 }

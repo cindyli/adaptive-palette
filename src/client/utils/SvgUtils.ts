@@ -10,8 +10,9 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { BlissSVGBuilder, BlissOptions } from "bliss-svg-builder";
-import { BlissSymbolEntry, SymbolCompositionType, MatchType } from "../index.d";
+import type { BlissOptions } from "bliss-svg-builder";
+import { BlissSVGBuilder } from "bliss-svg-builder";
+import type { BlissSymbolEntry, SymbolCompositionType, MatchType } from "../index.d";
 import type { Language } from "../i18n/I18n";
 import { adaptivePaletteGlobals } from "../state/GlobalData";
 
@@ -24,7 +25,8 @@ const indicatorIds = {
   list: [902, 903, 928, 992, 6436, 6439]  // bciAvId 24665, 28043, 24807, 25458, 16436, 16439
 };
 
-// Indicators that carry meaning rather than grammar, kept on the parts of a word (§7.0).
+// Indicators that carry meaning rather than grammar, kept on the parts of a word (Fundamental
+// Rules of Blissymbolics §7.0; see docs/ComposeWords.md).
 export const SEMANTIC_INDICATORS = [97, 6436]; // thing, abstract
 
 // Lists of modifier symbols
@@ -45,7 +47,7 @@ const modifierIds = {
   multiSymbol: [[2404, "/", 374], [2404, "/", 473], [2404, "/", 642]]
 };
 
-// The combine marker: one at each end of a word the user invented (§6.5.4.5).
+// The combine marker: one at each end of a word the user invented (Fundamental Rules §6.5.4.5).
 export const COMBINE_MARKER_ID = 233;
 
 /**
@@ -108,53 +110,18 @@ export function compositionToBstr (id: SymbolCompositionType): string {
     if (typeof item !== "number") {
       return item;
     }
-    const symbol = adaptivePaletteGlobals.symbols.find(s => s.id === item);
-    if (symbol && !symbol.isCharacter) {
-      // Composite (word-level) symbols are registered as bare-id aliases via
-      // initSvgCompositeDefinitions()/BlissSVGBuilder.define(), so the id itself
-      // is a valid code. For composites whose alias registration failed, fall
-      // back to inlining this composite's own flattened composition directly --
-      // safe since compositions never nest another composite.
-      return BlissSVGBuilder.isDefined(String(item))
-        ? String(item)
-        : compositionToBstr(symbol.composition as SymbolCompositionType);
-    }
-    // Character symbols always use BlissSVGBuilder's native "B<id>" code, never a
-    // bare-id alias. Unknown ids also fall here.
-    return "B" + item;
+    // A composite (word) expands to its own composition, which holds characters only. A
+    // character, or an unknown id, uses the builder's "B<id>" code.
+    const symbol = findSymbolById(item);
+    return symbol && !symbol.isCharacter
+      ? compositionToBstr(symbol.composition as SymbolCompositionType)
+      : "B" + item;
   };
 
   if (typeof id === "number") {
     return toToken(id);
   }
   return id.map(toToken).join("");
-}
-
-/**
- * Register every composite symbol (`isCharacter: false`) in
- * `adaptivePaletteGlobals.symbols` as a `BlissSVGBuilder` alias, keyed by its
- * own numeric ID, aliasing to its flattened base-character bstr. Character
- * symbols are deliberately NOT registered: they must always be referenced by
- * their native `"B<id>"` code (see the comment in `compositionToBstr()`), so
- * a bare-id alias for them would be both unnecessary and misleading.
- * Called once from `initAdaptivePaletteGlobals()`.
- * Note: BlissSVGBuilder.define() can still reject a composite's codeString
- * (e.g. composition with "XOH"). compositionToBstr() falls back to inline
- * expansion for any composite whose alias fails to register.
- */
-export function initSvgCompositeDefinitions (): void {
-  const definitions: Record<string, { codeString: string }> = {};
-  for (const symbol of adaptivePaletteGlobals.symbols) {
-    if (!symbol.isCharacter) {
-      definitions[String(symbol.id)] = {
-        codeString: compositionToBstr(symbol.composition as SymbolCompositionType)
-      };
-    }
-  }
-  const result = BlissSVGBuilder.define(definitions);
-  if (result.errors.length) {
-    console.error(`BlissSVGBuilder.define(): ${result.errors.length} symbol(s) failed to register due to internal coordinates`);
-  }
 }
 
 /*
@@ -272,6 +239,18 @@ export function findClassifierFromLeft (id: SymbolCompositionType): number {
   return rightMost;
 }
 
+// The dictionary by id. `adaptivePaletteGlobals.symbols` is never replaced, so this is built once.
+const symbolsById = new Map(adaptivePaletteGlobals.symbols.map((symbol) => [symbol.id, symbol]));
+
+/**
+ * The dictionary entry with this id.
+ * @param {number} id - The symbol's id.
+ * @return {BlissSymbolEntry | undefined} - The entry, or `undefined` if there is no such id.
+ */
+export function findSymbolById (id: number): BlissSymbolEntry | undefined {
+  return symbolsById.get(id);
+}
+
 /**
  * Utility function to find symbol information by BCI-AV-ID (user-facing lookup).
  *
@@ -302,9 +281,6 @@ export function glossFor (entry: BlissSymbolEntry, language: Language): string {
  * The label is compared to each gloss in the given language, where a match is either an exact
  * match, or the label as a whole word: no letter, digit or underscore just before or after it.
  * `\b` is not used because it treats "å", "ä" and "ö" as non-letters.
- *
- * Note: this was based on a similar function used in
- * `./apps/palette-generator/paletteJsonGenerator.ts`
  *
  * @param {string} label - The label to use to search for matches in the gloss.
  * @param {Language} language - The language of the glosses to search.

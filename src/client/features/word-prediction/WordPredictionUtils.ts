@@ -13,13 +13,13 @@
 import { adaptivePaletteGlobals } from "../../state/GlobalData";
 import { readMessageLog } from "../../core/MessageLog";
 import { resolveWordPayload } from "../../utils/GlossLookupUtils";
+import { findSymbolById } from "../../utils/SvgUtils";
 import { normalizeComposition } from "../../utils/SymbolEncodingUtils";
 import { renderTemplate, renderPromptLines, promptsFor, replyLine } from "../../utils/PromptUtils";
-import { pickModel } from "../telegraphic-translation/TelegraphicTranslationUtils";
-import { queryChat } from "../../core/OllamaApi";
+import { pickModel, queryChat } from "../../core/OllamaApi";
 import { attributesPromptText } from "../message-attributes/MessageAttributesState";
 import { aboutMePromptText } from "../about-me/AboutMeState";
-import { ResolutionRungType, SymbolCompositionType, SymbolEncodingType } from "../../index.d";
+import type { ResolutionRungType, SymbolCompositionType, SymbolEncodingType } from "../../index.d";
 import { languageSignal, t } from "../../i18n/I18n";
 
 /*
@@ -80,7 +80,7 @@ function hasLabel (label: string): boolean {
 function seedPayload (composition: SymbolCompositionType, label: string): SymbolEncodingType {
   const symbolId = normalizeComposition(composition);
   const symbol = typeof symbolId === "number"
-    ? adaptivePaletteGlobals.symbols.find((entry) => entry.id === symbolId)
+    ? findSymbolById(symbolId)
     : undefined;
   return {
     label,
@@ -388,10 +388,9 @@ export async function requestModelWords (message: string, numWords: number, abor
     // Line-per-field: an empty `attributes` or `aboutMe` drops its line.
     renderPromptLines(prompts.userPrompt, values),
     model,
-    false,
     renderTemplate(prompts.systemPrompt, values),
     abortSignal
   );
-  const content = "message" in response ? (response.message?.content || "") : "";
+  const content = response.message.content || "";
   return parseModelWords(content);
 }

@@ -10,15 +10,16 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
-import { JsonPaletteType, LayoutInfoType, PaletteIncludeType } from "../index.d";
+import type { JsonPaletteType, LayoutInfoType, PaletteIncludeType } from "../index.d";
 import { adaptivePaletteGlobals, wordBuildSignal } from "../state/GlobalData";
 import { cellTypeRegistry } from "../core/CellTypeRegistry";
 import { PALETTE_INCLUDE_TYPE, PaletteStore } from "../core/PaletteStore";
 import { savedWordCount } from "../core/SavedWords";
 import { generateGridStyle } from "../utils/GridUtils";
-import { Language, LabelType, parseLanguage, resolveLabel } from "../i18n/I18n";
+import type { Language, LabelType} from "../i18n/I18n";
+import { parseLanguage, resolveLabel } from "../i18n/I18n";
 import "./Palette.scss";
 
 type PalettePropsType = {
@@ -106,7 +107,7 @@ function gridTemplateColumns (numColumns: number, emptyColumns: Set<number>): st
 /**
  * The `grid-template-rows` value for the screen palette. A row holding only included palettes,
  * such as the header, takes its content's height: the bands in it set their own heights. Every
- * other row shares what is left, down to 64px, the smallest vocabulary target.
+ * other row shares what is left, with no minimum, so a palette of many rows never scrolls.
  *
  * @param {JsonPaletteType} paletteDefinition - The screen palette.
  * @param {number} numRows - The number of rows in it.
@@ -118,7 +119,7 @@ function gridTemplateRows (paletteDefinition: JsonPaletteType, numRows: number):
   for (let row = 1; row <= numRows; row++) {
     const inRow = cells.filter(({ options }) => options.rowStart <= row && row < options.rowStart + options.rowSpan);
     const onlyIncludes = inRow.length > 0 && inRow.every((cell) => cell.type === PALETTE_INCLUDE_TYPE);
-    tracks.push(onlyIncludes ? "auto" : "minmax(64px, 1fr)");
+    tracks.push(onlyIncludes ? "auto" : "minmax(0, 1fr)");
   }
   return tracks.join(" ");
 }

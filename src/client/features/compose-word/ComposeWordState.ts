@@ -23,11 +23,14 @@ import { adaptivePaletteGlobals, changeEncodingContents, wordBuildSignal } from 
 import { editMessage, insertWord } from "../../core/MessageEdit";
 import { PaletteStore } from "../../core/PaletteStore";
 import { isWordSaved, saveWord } from "../../core/SavedWords";
-import { hasPendingLabel, whenLabelsSettled } from "../../utils/SymbolLabelUtils";
+import { hasPendingLabel, whenLabelsSettled } from "../../core/SymbolLabelUtils";
 import { glossFor } from "../../utils/SvgUtils";
-import { COMMA_ID, SPACE_PART, insertWordAtCaret } from "../../utils/SymbolEncodingUtils";
+import { AUTO_COMMA_PART, COMMA_PART, SPACE_PART, insertWordAtCaret } from "../../utils/SymbolEncodingUtils";
 import { languageSignal } from "../../i18n/I18n";
-import { defaultName, findExistingWord, firstGloss, isSymbolWord, splitPart, wordComposition } from "./ComposeWordUtils";
+import {
+  addAutoCommas, defaultName, findExistingWord, firstGloss, isSymbolWord, removeAutoCommas, splitPart, wordComposition
+} from "./ComposeWordUtils";
+import { canSuggestNames, requestNameSuggestions } from "./WordNamingUtils";
 
 /**
  * What the dialog after Done shows. `match` is set when the word is already in the vocabulary.
@@ -42,6 +45,42 @@ export type WordDialogType = {
 
 // The dialog after Done, or `null` while it is closed.
 export const wordDialogSignal = signal<WordDialogType | null>(null);
+
+/**
+ * The model's names for the word in the dialog: `idle` when none are asked for (no model, or the word
+ * is already in the vocabulary), `working` while they are, then `done`.
+ */
+export type NameSuggestionsType = { status: "idle" } | { status: "working" } | { status: "done", names: string[] };
+
+export const nameSuggestionsSignal = signal<NameSuggestionsType>({ status: "idle" });
+
+// Stops the request for names when the dialog closes before the answer comes.
+let nameRequest: AbortController | null = null;
+
+/**
+ * Ask the model for names for the word in the dialog that just opened.
+ * @param {WordDialogType} dialog - The dialog.
+ * @returns {void}
+ */
+function askForNames (dialog: WordDialogType): void {
+  const controller = new AbortController();
+  nameRequest = controller;
+  nameSuggestionsSignal.value = { status: "working" };
+  // An answer that lands after its dialog closed is dropped, so it is not offered in the next one.
+  const settle = (names: string[]): void => {
+    if (wordDialogSignal.peek() === dialog) {
+      nameSuggestionsSignal.value = { status: "done", names };
+    }
+  };
+  requestNameSuggestions(dialog.partLabels, dialog.offeredName, controller.signal)
+    .then(settle)
+    .catch((error: unknown) => {
+      if (!controller.signal.aborted) {
+        console.error(`Could not suggest names: ${String(error)}`);
+        settle([]);
+      }
+    });
+}
 
 /**
  * Start building a word at the caret. The message is set aside and the input area holds the
@@ -82,7 +121,7 @@ function finishBuilding (word: SymbolEncodingType): void {
   if (!build) {
     return;
   }
-  wordDialogSignal.value = null;
+  closeWordDialog();
   const { payloads, caretPosition } = build.message;
   editMessage(insertWordAtCaret(word, payloads, caretPosition), () => {
     wordBuildSignal.value = null;
@@ -90,15 +129,20 @@ function finishBuilding (word: SymbolEncodingType): void {
 }
 
 /**
- * Turn the combine marker on or off. The spaces stay either way: the user deletes them.
+ * Turn the combine marker on or off. On puts an auto comma between every two neighbouring words; off
+ * removes every auto comma. The user's own commas and spaces stay.
  * @param {boolean} on - Whether the marker is to be on.
  * @returns {void}
  */
 export function setCombine (on: boolean): void {
   const build = wordBuildSignal.peek();
-  if (build) {
-    wordBuildSignal.value = { ...build, combine: on };
+  if (!build) {
+    return;
   }
+  const message = changeEncodingContents.peek();
+  editMessage(on ? addAutoCommas(message) : removeAutoCommas(message), () => {
+    wordBuildSignal.value = { ...build, combine: on };
+  });
 }
 
 /**
@@ -110,11 +154,11 @@ export function insertSpace (): void {
 }
 
 /**
- * Comma: add a comma after the caret. It never brings a space with it.
+ * Comma: add a comma after the caret.
  * @returns {void}
  */
 export function insertComma (): void {
-  insertWord({ label: ",", composition: COMMA_ID, modifierInfo: [] });
+  insertWord(COMMA_PART);
 }
 
 /**
@@ -130,6 +174,7 @@ export function canSplitAtCaret (): boolean {
 
 /**
  * Split: put the characters of the part at the caret in its place, with the caret on the last.
+ * Inside the combine markers, a comma goes between the characters.
  * @returns {void}
  */
 export function splitAtCaret (): void {
@@ -139,9 +184,12 @@ export function splitAtCaret (): void {
     return;
   }
   const characters = splitPart(part, languageSignal.peek());
+  const parts = wordBuildSignal.peek()?.combine
+    ? characters.flatMap((character, i) => (i === 0 ? [character] : [AUTO_COMMA_PART, character]))
+    : characters;
   editMessage({
-    payloads: [...payloads.slice(0, caretPosition), ...characters, ...payloads.slice(caretPosition + 1)],
-    caretPosition: caretPosition + characters.length - 1
+    payloads: [...payloads.slice(0, caretPosition), ...parts, ...payloads.slice(caretPosition + 1)],
+    caretPosition: caretPosition + parts.length - 1
   });
 }
 
@@ -172,7 +220,7 @@ export function requestFinish (): void {
     return;
   }
   const entry = findExistingWord(composition);
-  wordDialogSignal.value = {
+  const dialog: WordDialogType = {
     composition,
     offeredName: defaultName(parts),
     partLabels: parts.filter(isSymbolWord).map((part) => part.label),
@@ -184,13 +232,24 @@ export function requestFinish (): void {
       }
     })
   };
+  // A second Done queued while a label was pending lands here too: stop the first request.
+  nameRequest?.abort();
+  nameSuggestionsSignal.value = { status: "idle" };
+  wordDialogSignal.value = dialog;
+  // Ask the model for names once, as the dialog opens. Not for a word already in the vocabulary.
+  if (!dialog.match && canSuggestNames()) {
+    askForNames(dialog);
+  }
 }
 
 /**
- * Back to word: close the dialog and keep building.
+ * Close the dialog: Back to word, Escape, or after a name is chosen. Stops the request for names, so
+ * going back and pressing Done again never queues another behind it.
  * @returns {void}
  */
 export function closeWordDialog (): void {
+  nameRequest?.abort();
+  nameRequest = null;
   wordDialogSignal.value = null;
 }
 

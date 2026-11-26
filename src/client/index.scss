@@ -10,8 +10,8 @@ html {
 
 /*
  * The page is exactly the height of the screen: the top bar, then the palette, which takes
- * the rest. Below 650px tall the bands keep their 1024×650 heights and the vocabulary rows
- * stop at 64px, so the page scrolls down. Columns shrink, so it never scrolls sideways.
+ * the rest. Below 650px tall the bands keep their 1024×650 heights, so the page scrolls down.
+ * Columns shrink, so it never scrolls sideways.
  *
  * Zooming in makes the window fewer CSS px tall. The bands and the vocabulary grow with that
  * height, so on a screen taller than 650px they stay about the same size on screen as you zoom
@@ -70,6 +70,22 @@ button {
   }
 }
 
+/*
+ * The look of the palette's word, indicator, modifier and branch cells. It comes before
+ * `.btn-command` so a branch that edits the message takes the command colours. Unavailable
+ * changes only the fill: restating the border would outrank the red hover and focus border.
+ */
+.symbolCell {
+  border: 3px solid blue;
+  background-color: white;
+  padding-inline: 0.5rem;
+  text-align: center;
+
+  &[aria-disabled="true"] {
+    background-color: silver;
+  }
+}
+
 .btn-command {
   background-color: lightsalmon;
 
@@ -88,7 +104,7 @@ button {
   position: relative;
   overflow: hidden;
 
-  :before {
+  &::before {
     content: "";
     position: absolute;
     top: 0;
@@ -100,11 +116,7 @@ button {
     border-bottom-color: black;
     border-left-color: black;
     background: #658E15;
-    -webkit-box-shadow: 0 1px 1px rgba(0,0,0,0.3), -1px 1px 1px rgba(0,0,0,0.2);
-    -moz-box-shadow: 0 1px 1px rgba(0,0,0,0.3), -1px 1px 1px rgba(0,0,0,0.2);
     box-shadow: 0 1px 1px rgba(0,0,0,0.3), -1px 1px 1px rgba(0,0,0,0.2);
-    //  Firefox 3.0 damage limitation
-    display: block; width: 0;
   }
 }
 

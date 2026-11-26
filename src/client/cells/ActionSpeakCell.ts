@@ -10,7 +10,7 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
 
 import { changeEncodingContents, finishedMessageSignal } from "../state/GlobalData";
@@ -19,7 +19,7 @@ import { generateGridStyle } from "../utils/GridUtils";
 import { normalizeComposition } from "../utils/SymbolEncodingUtils";
 import { speak, speakUnavailable } from "../utils/SpeechUtils";
 import { messageText, saveMessageRecord } from "../core/MessageLog";
-import { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
+import type { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
 import "./ActionSpeakCell.scss";
 
 type ActionSpeakCellPropsType = {
@@ -68,7 +68,7 @@ export function ActionSpeakCell (props: ActionSpeakCellPropsType): VNode {
   return html`
     <button
       id="${id}"
-      class="ActionSpeakCell btn-command"
+      class="actionSpeakCell btn-command"
       style="${gridStyles}"
       aria-controls=${ariaControls}
       aria-disabled=${cannotRun}
@@ -77,7 +77,6 @@ export function ActionSpeakCell (props: ActionSpeakCellPropsType): VNode {
     ? html`<${BlissSymbol}
           composition=${normalizeComposition(composition)}
           label=${label}
-          isPresentation=true
         />`
     : label}
     </button>

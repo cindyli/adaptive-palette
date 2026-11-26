@@ -10,14 +10,12 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 
-import { VNode } from "preact";
+import type { VNode } from "preact";
 import { html } from "htm/preact";
-import { BlissSymbol } from "../components/BlissSymbol";
-import { clearMessageAndChoices } from "../features/telegraphic-translation/TelegraphicTranslationState";
-import { editMessage } from "../core/MessageEdit";
+import { CommandButton } from "../components/CommandButton";
+import { clearMessage, editMessage } from "../core/MessageEdit";
 import { wordBuildSignal } from "../state/GlobalData";
-import { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
-import { generateGridStyle } from "../utils/GridUtils";
+import type { BlissSymbolInfoType, LayoutInfoType } from "../index.d";
 import { announceIfEnabled } from "../utils/SpeechUtils";
 
 type CommandClearEncodingProps = {
@@ -29,28 +27,18 @@ type CommandClearEncodingProps = {
 
 export function CommandClearEncoding (props: CommandClearEncodingProps): VNode {
   const { id, options } = props;
-  const { label, labelLanguage, composition, columnStart, columnSpan, rowStart, rowSpan, ariaControls } = options;
-
-  const gridStyles = generateGridStyle(columnStart, columnSpan, rowStart, rowSpan);
 
   const cellClicked = (): void => {
     // While a word is being built, only its parts go. The message and its sentences wait for it.
     if (wordBuildSignal.value) {
       editMessage({ payloads: [], caretPosition: -1 });
     } else {
-      clearMessageAndChoices();
+      clearMessage();
     }
-    announceIfEnabled(label, labelLanguage);
+    announceIfEnabled(options.label, options.labelLanguage);
   };
 
   return html`
-    <button
-      id="${id}"
-      class="btn-command"
-      style="${gridStyles}"
-      aria-controls=${ariaControls}
-      onClick=${cellClicked}>
-      <${BlissSymbol} composition=${composition} label=${label} />
-    </button>
+    <${CommandButton} id=${id} options=${options} onClick=${cellClicked} />
   `;
 }

@@ -10,22 +10,20 @@
  * https://github.com/inclusive-design/adaptive-palette/blob/main/LICENSE
  */
 /**
- * The pure side of building a word: its composition, breaking a part into characters, the name
- * offered for it, and whether it is already in the vocabulary. See `docs/ComposeWords.md`.
+ * The pure side of building a word: its composition, the auto commas the combine marker adds and
+ * removes, breaking a part into characters, the name offered for it, and whether it is already in
+ * the vocabulary. See `docs/ComposeWords.md`.
  */
-import type { BlissSymbolEntry, SymbolCompositionType, SymbolEncodingType } from "../../index.d";
+import type { BlissSymbolEntry, ContentSignalDataType, SymbolCompositionType, SymbolEncodingType } from "../../index.d";
 import type { Language } from "../../i18n/I18n";
 import { adaptivePaletteGlobals } from "../../state/GlobalData";
-import { COMBINE_MARKER_ID, SEMANTIC_INDICATORS, glossFor, isIndicator } from "../../utils/SvgUtils";
-import { isWordPart, normalizeComposition } from "../../utils/SymbolEncodingUtils";
+import { COMBINE_MARKER_ID, SEMANTIC_INDICATORS, findSymbolById, glossFor, isIndicator } from "../../utils/SvgUtils";
+import { AUTO_COMMA_PART, isWordPart, normalizeComposition } from "../../utils/SymbolEncodingUtils";
 
 type TokenType = string | number;
 
 // A kerning code moves one character against the next. It carries no meaning.
 const KERNING = /^[AR]K:/;
-
-const entryOf = (id: number): BlissSymbolEntry | undefined =>
-  adaptivePaletteGlobals.symbols.find((symbol) => symbol.id === id);
 
 const isOverlay = (token: TokenType | undefined): boolean => token === ";" || token === ";;";
 
@@ -60,14 +58,15 @@ export function firstGloss (gloss: string): string {
 function expandComposition (composition: SymbolCompositionType): TokenType[] {
   const tokens = typeof composition === "number" ? [composition] : composition;
   return tokens.flatMap((token) => {
-    const entry = typeof token === "number" ? entryOf(token) : undefined;
+    const entry = typeof token === "number" ? findSymbolById(token) : undefined;
     return entry && !entry.isCharacter && Array.isArray(entry.composition) ? entry.composition : [token];
   });
 }
 
 /**
  * Drop the grammatical indicators, such as action, plural and past, with the `;` or `;;` before
- * each. A semantic one, the thing or abstract indicator, stays (§7.0).
+ * each. A semantic one, the thing or abstract indicator, stays (Fundamental Rules of Blissymbolics
+ * §7.0; see docs/ComposeWords.md).
  * @param {TokenType[]} tokens - Characters and separators.
  * @returns {TokenType[]}
  */
@@ -108,6 +107,38 @@ export function wordComposition (parts: SymbolEncodingType[], combine: boolean):
 }
 
 /**
+ * Put an auto comma between every two neighbouring words, for when the combine marker is turned on.
+ * The caret stays on the same part.
+ * @param {ContentSignalDataType} message - The parts of the new word and the caret.
+ * @returns {ContentSignalDataType}
+ */
+export function addAutoCommas ({ payloads, caretPosition }: ContentSignalDataType): ContentSignalDataType {
+  const parts: SymbolEncodingType[] = [];
+  let caret = -1;
+  payloads.forEach((part, i) => {
+    if (i > 0 && isWordPart(payloads[i - 1]) && isWordPart(part)) {
+      parts.push(AUTO_COMMA_PART);
+    }
+    parts.push(part);
+    if (i === caretPosition) {
+      caret = parts.length - 1;
+    }
+  });
+  return { payloads: parts, caretPosition: caret };
+}
+
+/**
+ * Remove every auto comma, for when the combine marker is turned off. The caret stays on the same
+ * part, or moves to the part before an auto comma it was on.
+ * @param {ContentSignalDataType} message - The parts of the new word and the caret.
+ * @returns {ContentSignalDataType}
+ */
+export function removeAutoCommas ({ payloads, caretPosition }: ContentSignalDataType): ContentSignalDataType {
+  const kept = (parts: SymbolEncodingType[]): SymbolEncodingType[] => parts.filter((part) => !part.isAutoComma);
+  return { payloads: kept(payloads), caretPosition: kept(payloads.slice(0, caretPosition + 1)).length - 1 };
+}
+
+/**
  * A part's characters, each a part of its own labelled with its first meaning. A character keeps
  * the indicators written on it. Kerning codes are dropped, since the characters may not stay
  * side by side.
@@ -129,7 +160,7 @@ export function splitPart (part: SymbolEncodingType, language: Language): Symbol
   }
   return groups.filter((group) => group.length > 0).map((group) => {
     const id = group.find((token): token is number => typeof token === "number");
-    const entry = id === undefined ? undefined : entryOf(id);
+    const entry = id === undefined ? undefined : findSymbolById(id);
     // A letter, such as "Xa", is labelled with the letter.
     const label = entry ? firstGloss(glossFor(entry, language)) : group.join("").replace(/^X/, "");
     return { label, composition: normalizeComposition(group), modifierInfo: [] };
