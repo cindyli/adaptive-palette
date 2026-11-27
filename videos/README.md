@@ -3,6 +3,52 @@
 Short videos that teach people to use Adaptive Palette. Each video is a script, so it can be recorded again
 after the UI changes.
 
+## Playlists
+
+Each video teaches one feature in under 6 minutes. Transcripts are written and reviewed before a video is
+recorded. The `welcome` overview video is in neither playlist. The design, with what each video covers, is in
+`docs/superpowers/specs/2026-11-27-training-videos-design.md` (kept locally, not in git).
+
+AAC users:
+
+| # | Video | Status |
+| --- | --- | --- |
+| 1 | Welcome and Palette Layout (`layout`) | Recorded. Its closing list must be re-recorded to match these playlists |
+| 2 | Using Two Switches | Not started |
+| 3 | Word Suggestions | Not started |
+| 4 | Make Sentences | Transcript in review: `transcripts/u04-make-sentences.md` |
+| 5 | Msg Style | Not started |
+| 6 | Indicators and Modifiers | Not started |
+| 7 | Add Symbol to Message | Not started |
+| 8 | Compose a New Word | Not started |
+| 9 | About Me | Not started |
+| 10 | Your Data | Not started |
+
+Support people:
+
+| # | Video | Status |
+| --- | --- | --- |
+| 1 | Installing the Desktop Version | Transcript in review: `transcripts/s01-installing-the-desktop-version.md` |
+| 2 | First-Run Setup, and When the AI Is Off | Not started |
+| 3 | Settings Overview | Not started |
+| 4 | Switch Access and Keyboard Shortcuts | Not started |
+| 5 | Changing the Language | Not started |
+| 6 | About Me | Same video as AAC users 9 |
+| 7 | Your Data | Same video as AAC users 10 |
+| 8 | Updating and Uninstalling | Not started |
+
+Next step: once the two transcripts in review come back, write the other transcripts in their style, using the
+reviewers' comments.
+
+Transcript rules:
+
+1. Each chapter is a `##` heading under the `#` title with a table: `# | On screen | Narration`.
+2. **Bold** is a button or message exactly as the screen shows it. *Italic* is a symbol chosen on a palette.
+   "Quotes" are title-card text, AI suggestions, app speech or typed words.
+3. The example person has a brother called Sam. Use only symbols on the standard chart.
+4. Check a transcript with `python3 docs/superpowers/transcripts/check.py <file>`, run from the repo root: names
+   must match the app, at most 650 words, at least 3 chapters.
+
 ## Requirements
 
 1. A Mac.
