@@ -2,10 +2,10 @@
  * Welcome: an overview. Adaptive Palette supports communication with symbols, and AI on your own computer
  * adapts it to you. A tour of six AI features follows, then the funder credits.
  */
-import path from "node:path";
 import type { BrowserContext, Page } from "playwright";
 import type { Step } from "../../record.ts";
 import { click, highlight } from "../../lib/Highlight.ts";
+import { routePictures } from "../../lib/Pictures.ts";
 
 const MESSAGE = "#content-encoding-area";
 // The symbol at the caret: the one just added or changed.
@@ -13,12 +13,6 @@ const CARET_SYMBOL = `${MESSAGE} .cursorCaret`;
 const PREDICTIONS = "#predicted-words";
 const HOME = "#command-go-to-root";
 const LEARNT = "section[aria-labelledby=\"about-me-learnt-heading\"]";
-// No shipped palette has a picture, so the recording shows these home board folders as pictures.
-const PICTURES: Record<string, string> = {
-  "SVG:12870:SVG-4b3c725a-a3af-48f6-883f-db606886e360": "body.svg",
-  "SVG:14377:SVG-9dca58ec-6c54-42c9-a514-2a18a8355df8": "food.svg",
-  "drink-973b5970-25c7-402d-bbd0-ce60298025c7": "drink.svg"
-};
 // No shipped palette has a dog, so the recording puts one in place of the snake in the environment folder.
 const SNAKE = "snake-729e6161-8240-430a-be14-1f52b8fb1e7b";
 const DOG_ID = "dog-video";
@@ -33,16 +27,7 @@ type PaletteJson = { cells: Record<string, { type: string, options: Record<strin
 
 /** For this recording only: show three home board folders as pictures, and put a dog in the environment folder. */
 export async function prepare (context: BrowserContext): Promise<void> {
-  await context.route("**/palettes/bliss_standard_chart.json", async (route) => {
-    const response = await route.fetch();
-    const palette = await response.json() as PaletteJson;
-    for (const [id, file] of Object.entries(PICTURES)) {
-      const options = palette.cells[id].options;
-      delete options.composition;
-      options.picture = `../pictures/${file}`;
-    }
-    await route.fulfill({ response, json: palette });
-  });
+  await routePictures(context);
   await context.route("**/palettes/environment.json", async (route) => {
     const response = await route.fetch();
     const palette = await response.json() as PaletteJson;
@@ -53,10 +38,6 @@ export async function prepare (context: BrowserContext): Promise<void> {
     };
     await route.fulfill({ response, json: { ...palette, cells } });
   });
-  await context.route("**/pictures/*.svg", (route) => route.fulfill({
-    path: path.join(import.meta.dirname, path.basename(new URL(route.request().url()).pathname)),
-    contentType: "image/svg+xml"
-  }));
 }
 
 /** Click each selector in turn. */

@@ -41,6 +41,7 @@ No Ollama is needed. Model replies come from each video's `stubs.json`.
 ```bash
 npm run video -- welcome            # English
 npm run video -- welcome --lang en
+npm run video -- layout             # Welcome and Palette Layout
 ```
 
 This writes to `videos/output/` (not committed):
@@ -80,12 +81,25 @@ Watch the video and check that:
    dialog, because a dialog draws above the card.
 4. Give the last step `credits: true` to show the funder credits, `assets/credits.<lang>.html`, on a white card
    for at least 3 seconds. The narration is still spoken.
-5. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
+5. Give a step `slide: "<file>.html"` to show that file from the script folder as a full-screen card, for at least
+   3 seconds. Images in it use their path from the repo root, such as `/videos/scripts/layout/image.jpg`. A
+   reload under a slide keeps it up, as under a title card. `scripts/layout/` builds a list up one line per step
+   with one slide per step.
+6. Give a step `banner` text to show it as a strip across the top with the app shrunk below it.
+7. Put the video's own look in `theme.css` in the script folder. It is added after the runner's styles, so it can
+   restyle `#videoTitle`, `#videoBanner`, `#videoHighlight`, `.videoArrow` and `.videoArrowLabel`, and style its
+   slides. `scripts/layout/` uses it to follow a design.
+8. Give a step a `chapter` to start a YouTube chapter. YouTube needs at least 3 chapters, each at least
    10 seconds long; the runner warns when they are not.
-6. List every model that `public/config.json` asks for in `stubs.json` `models`, or the first-run setup
+9. List every model that `public/config.json` asks for in `stubs.json` `models`, or the first-run setup
    dialog covers the screen. The runner fails if the app asks Ollama for something with no stub.
-7. To show something no shipped palette has, export `prepare(context)` from `steps.ts` and route the
+10. To show something no shipped palette has, export `prepare(context)` from `steps.ts` and route the
    palette file to a changed copy there. `scripts/welcome/` does this to show pictures.
+11. To set app data before the video starts, export `setup(page)` from `steps.ts`. It runs once the app has
+    loaded, and nothing it does is seen. `scripts/layout/` saves messages there so the word suggestions are filled.
+12. Export `style = "drawn"` for the look of a hand-made screen recording: red boxes and arrows that draw
+    themselves on, and a pointer that glides from click to click, rests before each click and holds after it.
+    `scripts/layout/` uses it.
 
 When writing the steps:
 
@@ -101,6 +115,53 @@ When writing the steps:
 5. To set app state the screen cannot reach, import the app's module in `page.evaluate` by its dev server
    path, such as `/src/client/features/about-me/AboutMeState.ts`. That gives the app's own copy.
    `scripts/welcome/` does this to fill About Me.
+6. To point at something, call `arrow(page, selector)` from `lib/Highlight.ts` for a plain arrow from below, or
+   `arrow(page, selector, "label")` for a labelled arrow from the left. Arrows stay until the next step.
+7. To show pictures on the home board, call `routePictures` from `lib/Pictures.ts` in `prepare`.
+8. In the drawn style, `click(page, selector, { box: true })` draws a box around a cell before clicking it, and
+   `drawArrow(page, to, { from })` draws a curved arrow from one element to another, or with `{ corner: true }` to
+   a folder's fold.
+
+## Lessons from making video
+
+Writing the narration:
+
+1. Read aloud everything shown as text, such as a list of videos on a slide. Many AAC users rely on hearing
+   more than reading. To hold one slide through a long reading, split the reading into steps that each show the
+   same slide.
+2. Name one thing at a time, in the order the screen marks it, so each phrase has one box or arrow to land on.
+3. Keep one idea per step. A short step is easier to time, and the step's start is a fixed point to time from.
+
+Making the screen look like real use:
+
+1. Fill the app as a real user's would be. Save data in `setup` and give `stubs.json` replies, so rows such as
+   the word suggestions are not empty. A stubbed reply still takes about a second to show after each change.
+2. Go at a pace a viewer can follow: the pointer glides to each cell, rests, clicks and holds. Never let it
+   jump or appear from nowhere.
+3. Mark what is about to change before the click, as with `click(..., { box: true })`. A box left after a click
+   that changes the page sits over whatever cell is now there.
+4. Something with no element of its own, such as a folder's fold, can still be pointed at from its cell's box.
+
+Timing the marks to the narration:
+
+1. Waits in an action count from when the step's narration starts. Find when a phrase is spoken from the
+   recording, with `ffmpeg -i videos/output/<name>.en.mp4 -af silencedetect=noise=-30dB:d=0.3 -f null -`,
+   then set the wait so the mark lands as the phrase is said.
+2. Clicks take time (about 3 seconds in the drawn style), so count them in the waits that follow.
+
+Pitfalls:
+
+1. A disabled button, such as Home on the home page, cannot be clicked: the step times out. Skip it.
+2. A selector such as `.symbolEntryToolbar > button:nth-of-type(2)` depends on which buttons
+   `public/config.json` shows. Check it again when the config changes.
+3. Look for problems in still frames, not only by watching. A contact sheet of frames every 2 seconds shows
+   the whole video at once, and frames 0.1 seconds apart show whether a mark draws on or flashes:
+
+   ```bash
+   ffmpeg -i videos/output/layout.en.mp4 -vf "fps=1/2,scale=480:-1,tile=4x4" sheet_%02d.png
+   ```
+
+   Put the frames outside the repo.
 
 ## Add a language
 

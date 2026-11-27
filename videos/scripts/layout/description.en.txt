@@ -1,0 +1,17 @@
+A welcome to Adaptive Palette, a communication board that uses Bliss symbols, pictures, or both, and a tour of its layout. Its AI adapts the board to you, and runs on your own computer, so your messages stay private.
+
+In this video:
+• What the AI in Adaptive Palette does for you
+• How vocabulary is grouped into folders
+• The message window, and the buttons around it
+• Word suggestions, and the row of editing cells
+• Editing a message: moving the cursor, adding words, deleting words
+
+Try it online: https://adaptive-palette.pages.dev/
+AI features need the desktop version, which runs the AI on your own computer so your messages stay private.
+Install the desktop version: https://github.com/inclusive-design/adaptive-palette/blob/main/docs/Deployment.md
+
+Funded in part by a grant from IDEA, NFRF and the Government of Canada. Developed by OCAD University and the Inclusive Design Research Centre.
+
+Chapters
+{{chapters}}

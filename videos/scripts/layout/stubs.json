@@ -1,0 +1,9 @@
+{
+  "models": ["gemma4:12b"],
+  "chat": [
+    {
+      "match": "predict the next word",
+      "reply": "with\nnow\nphone\ncheese\nmeal"
+    }
+  ]
+}

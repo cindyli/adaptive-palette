@@ -17,7 +17,9 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { type BrowserContext, chromium, type Page } from "playwright";
 import { createServer } from "vite";
-import { clearOverlay, highlight, installOverlay, showCard, showTitle } from "./lib/Highlight.ts";
+import {
+  type OverlayStyle, clearOverlay, hideBanner, highlight, installOverlay, showBanner, showCard, showTitle
+} from "./lib/Highlight.ts";
 import { narrate } from "./lib/Narrate.ts";
 import { type StubFile, installStubs } from "./lib/Stubs.ts";
 import { type TimedStep, chapterWarnings, toChapters, toVtt } from "./lib/Timeline.ts";
@@ -38,6 +40,11 @@ export interface Step {
   /** Cover the screen with the funder credits, `videos/assets/credits.<lang>.html`, for at least
    * `TITLE_SECONDS`. The narration is still spoken. */
   credits?: boolean;
+  /** Cover the screen with this HTML file from the script folder, for at least `TITLE_SECONDS`. The narration is
+   * still spoken. Images in it use their path from the repo root, such as `/videos/scripts/<name>/image.jpg`. */
+  slide?: string;
+  /** Show this text as a strip across the top, with the app shrunk below it, for at least `TITLE_SECONDS`. */
+  banner?: string;
 }
 
 /** What a script's `steps.ts` exports. */
@@ -45,6 +52,11 @@ export interface Script {
   steps: Step[];
   /** Changes the browser before the app opens, such as routing a palette file to a changed copy. */
   prepare?: (context: BrowserContext) => Promise<void>;
+  /** "drawn" for hand-drawn red boxes and arrows, and a pointer that glides from click to click. */
+  style?: OverlayStyle;
+  /** Runs once the app has loaded, before the video starts, so it is not seen, such as saving app data and
+   * reloading. */
+  setup?: (page: Page) => Promise<void>;
 }
 
 const run = promisify(execFile);
@@ -133,10 +145,33 @@ async function loadCredits (lang: string): Promise<string> {
   }
 }
 
+/** The HTML card of each step that shows one, by step id: its `slide` file, or the funder credits. */
+async function loadCards (scriptDir: string, lang: string, steps: Step[]): Promise<Record<string, string>> {
+  const cards: Record<string, string> = {};
+  for (const step of steps) {
+    if (step.slide) {
+      const file = path.join(scriptDir, step.slide);
+      try {
+        cards[step.id] = await readFile(file, "utf8");
+      } catch {
+        throw new Error(`Step "${step.id}": no slide file ${path.relative(ROOT, file)}`);
+      }
+    } else if (step.credits) {
+      cards[step.id] = await loadCredits(lang);
+    }
+  }
+  return cards;
+}
+
+/** The video's own overlay styles, `theme.css` in its script folder, or none. */
+async function loadTheme (scriptDir: string): Promise<string> {
+  return readFile(path.join(scriptDir, "theme.css"), "utf8").catch(() => "");
+}
+
 /** Drive the app through the steps. Returns the video file, the timed steps and the video's length. */
 async function recordSteps (
-  { steps, prepare }: Script, durations: number[], narration: Record<string, string>, credits: string,
-  stubs: StubFile, workDir: string
+  { steps, prepare, setup, style }: Script, durations: number[], narration: Record<string, string>, cards: Record<string, string>,
+  theme: string, stubs: StubFile, workDir: string
 ): Promise<{ video: string; timed: TimedStep[]; offset: number; total: number }> {
   const server = await createServer({
     root: ROOT, logLevel: "error", server: { port: PORT, strictPort: true }
@@ -149,17 +184,22 @@ async function recordSteps (
     });
     const unanswered = await installStubs(context, stubs);
     await prepare?.(context);
-    await installOverlay(context);
+    await installOverlay(context, theme, style);
     const page = await context.newPage();
     const videoStart = Date.now();
     await page.goto(`http://localhost:${PORT}/`);
     await page.locator(".screenPalette").waitFor();
+    await setup?.(page);
 
     const titleOf = (step: Step): string => (typeof step.title === "string" ? step.title : narration[step.id]);
     // The video opens on the first title card, so the app is not seen before it.
     if (steps[0]?.title) {
       await showTitle(page, titleOf(steps[0]), false);
       await page.waitForTimeout(200);  // Let the card be drawn before the timer, and so the video, starts.
+    }
+    if (steps[0]?.banner) {
+      await showBanner(page, steps[0].banner);
+      await page.waitForTimeout(200);  // As for a title card, so the first frame has the banner.
     }
 
     const timed: TimedStep[] = [];
@@ -168,7 +208,8 @@ async function recordSteps (
     for (const [index, step] of steps.entries()) {
       const start = elapsed();
       timed.push({ id: step.id, chapter: step.chapter, text: narration[step.id], start, duration: durations[index] });
-      const card = Boolean(step.title || step.credits);
+      const cardHtml = cards[step.id];
+      const card = Boolean(step.title || cardHtml);
       try {
         // A step that only highlights draws it under the card first, so the card fades out onto it.
         if (!card && !step.action) {
@@ -178,8 +219,13 @@ async function recordSteps (
         if (step.title) {
           await showTitle(page, titleOf(step));
         }
-        if (step.credits) {
-          await showCard(page, credits);
+        if (cardHtml) {
+          await showCard(page, cardHtml);
+        }
+        // After any card is up, so the app returning to full size is not seen.
+        await hideBanner(page);
+        if (step.banner) {
+          await showBanner(page, step.banner);
         }
         await step.action?.(page);
         await highlight(page, step.highlight);
@@ -187,7 +233,7 @@ async function recordSteps (
         throw new Error(`Step "${step.id}": ${(error as Error).message}`, { cause: error });
       }
       const pause = steps[index + 1]?.chapter ? CHAPTER_PAUSE_SECONDS : PAUSE_SECONDS;
-      const holdUntil = start + Math.max(durations[index], card ? TITLE_SECONDS : 0) + pause;
+      const holdUntil = start + Math.max(durations[index], card || step.banner ? TITLE_SECONDS : 0) + pause;
       await page.waitForTimeout(Math.max(0, holdUntil - elapsed()) * 1000);
     }
     const total = elapsed();
@@ -249,7 +295,8 @@ async function main (): Promise<void> {
   const script = await import(path.join(scriptDir, "steps.ts")) as Script;
   const { steps } = script;
   const narration = await loadNarration(scriptDir, lang, steps);
-  const credits = steps.some((step) => step.credits) ? await loadCredits(lang) : "";
+  const cards = await loadCards(scriptDir, lang, steps);
+  const theme = await loadTheme(scriptDir);
   const stubs = await readJson<StubFile>(path.join(scriptDir, "stubs.json"));
 
   const workDir = await mkdtemp(path.join(tmpdir(), `video-${name}-`));
@@ -262,7 +309,7 @@ async function main (): Promise<void> {
     }
 
     console.log("2. Recording");
-    const { video, timed, offset, total } = await recordSteps(script, durations, narration, credits, stubs, workDir);
+    const { video, timed, offset, total } = await recordSteps(script, durations, narration, cards, theme, stubs, workDir);
 
     console.log("3. Combining video and narration");
     const base = `${name}.${lang}`;

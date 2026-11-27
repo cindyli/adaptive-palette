@@ -1,9 +1,16 @@
 {
   "welcome": {
     "en": {
-      "recorded": "2026-11-06",
-      "commit": "4b0c0bd-dirty",
+      "recorded": "2026-11-27",
+      "commit": "9163650-dirty",
       "youtube": "https://www.youtube.com/watch?v=j7-XnBI1o1M"
+    }
+  },
+  "layout": {
+    "en": {
+      "recorded": "2026-11-27",
+      "commit": "9163650-dirty",
+      "youtube": ""
     }
   }
 }
